@@ -17,8 +17,9 @@ main(int argc, char **argv)
     hashtable *table;
     CURLcode global;
     
-    if(argc > 1 ){ 
+    if(argc <= 1 ){ 
       fprintf(stderr, "Error : read the man pages before using this program\n");
+      return EXIT_FAILURE;
     }
 
     global = curl_global_init(CURL_GLOBAL_ALL);
