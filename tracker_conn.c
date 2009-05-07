@@ -45,12 +45,6 @@ size_t
 writer(void  *ptr ,size_t size ,size_t nmemb,void *stream ){
     int i;
     size_t realsize = size * nmemb;
-
-    printf("tracker response: ");
-    for(i=0; i<realsize; i++)
-	printf("%c", ((char *)ptr)[i]);
-    printf("\n");
-
     return 0;
 }
 
@@ -77,8 +71,6 @@ connection(list *trackers){
 
 	do{
 	    url = generate_get((ht_torrent *)current->elmt , e_handle);
-	    printf("url = %s\n",url);
-
 	    rc = curl_easy_setopt(e_handle ,CURLOPT_URL ,url );
 	    if(rc!=CURLE_OK) goto curl_error;
 
@@ -90,7 +82,7 @@ connection(list *trackers){
 
 	    free(url);
 	}while((current  = current -> next));
-
+       
 	/*always cleanup*/
 	curl_easy_cleanup(e_handle);
 	trackers = trackers -> next;
