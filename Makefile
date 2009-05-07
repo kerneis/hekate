@@ -1,13 +1,13 @@
 #CPC_DIR=/home/kerneis/cpc/stable
-#CPC_DIR=/home/yoann/sources/cpc
-#CPC=$(CPC_DIR)/bin/cpc.native
+CPC_DIR=/home/pejman/developement/stable
+CPC=/home/pejman/developement/stable/bin/cpc.native.exe
 
-CLIBS=-I -lcurl #$(CPC_DIR)/runtime
+CLIBS=-I $(CPC_DIR)/runtime -lcurl 
 CFLAGS=-O3 -Wall -g $(CLIBS)
 
-LDLIBS=-lcurl #$(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -pthread
+LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -pthread
 
-#.SUFFIXES: .cpc .cpi
+.SUFFIXES: .cpc .cpi
 
 .PHONY: all clean
 
@@ -19,8 +19,8 @@ clean:
 	rm -f *.o *~ *.cpi
 	rm -f main
 
-#.cpc.cpi:
-#	$(CPP) -P $(CFLAGS) -include cpc_runtime.h \
-#	  - <$< >$@
-#.cpi.c:
-#	$(CPC) $< --out $@
+.cpc.cpi:
+	$(CPP) -P $(CFLAGS) -include cpc_runtime.h \
+	  - <$< >$@
+.cpi.c:
+	$(CPC) $< --out $@
