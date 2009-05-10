@@ -16,12 +16,6 @@ typedef struct hashtable{
     ht_element **table;
 }hashtable;
 
-typedef struct elmt_pos{
-    hashtable * ht;
-    int array_pos;
-    ht_element * list_pos;
-} elmt_pos;
-
 hashtable * ht_create(int size);
 unsigned char * ht_insert(hashtable * ht, unsigned char *key, void *value);
 void * ht_get(hashtable * ht, unsigned char *key);

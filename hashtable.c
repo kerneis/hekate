@@ -62,43 +62,6 @@ ht_get(hashtable * ht, unsigned char *key)
 }
 
 
-elmt_pos* 
-ht_init_scan(hashtable * table)
-{
-    elmt_pos * res = malloc(sizeof(elmt_pos));
-    if(!res) return NULL;
-
-    res->ht = table;
-    res->array_pos = 0;
-    res->list_pos = NULL;
-
-    return res;
-}
-
-void*
-ht_get_next(elmt_pos * pos)
-{
-    int i;
-    assert(pos!=NULL);
-    
-    if(!pos->list_pos && !pos->list_pos->next){
-	pos->list_pos = pos->list_pos->next;
-	return pos->list_pos;
-    }
-
-    for(i=pos->array_pos; i<pos->ht->size; i++){
-	if(pos->ht->table[i]){
-	    pos->array_pos = i;
-	    pos->list_pos = pos->ht->table[i];
-	    return pos->ht->table[i]->content;
-	}
-    }
-
-    free(pos);
-    return NULL;
-}
-
-
 int
 ht_info_load(ht_torrent * elmt, benc *raw)
 {

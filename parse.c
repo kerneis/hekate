@@ -51,12 +51,14 @@ add_set (benc *b, benc *obj)
 buffer *
 open_buffer(const char *pathname)
 {
-    int fd = open(pathname, O_RDONLY|O_NONBLOCK);
+    int fd;
+    buffer *b;
 
-    if(!fd)
-        return NULL;
+    if(!(fd = open(pathname, O_RDONLY|O_NONBLOCK)))
+	{ perror("open_buffer)open"); return NULL; }
 
-    buffer *b = malloc(sizeof(buffer));
+    if(!(b = malloc(sizeof(buffer))))
+	{ perror("open_buffer)malloc"); close(fd); return NULL; }
 
     b->fd = fd;
     b->cur = 0;
@@ -111,7 +113,7 @@ get_byte(buffer *b)
            }
            else
                i += rc;
-           //cpc_yield;
+           /*cpc_yield;*/
        }
     }
     if(b->cur == b->eof)
