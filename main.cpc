@@ -1,0 +1,128 @@
+#include <assert.h>
+#include <dirent.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+
+#include <curl/curl.h>
+
+#include "hashtable.h"
+#include "parse.h"
+#include "server.h"
+#include "sha1.h"
+#include "tracker_io.h"
+
+#define FILESCHECK_TIMER 600
+
+/*
+  getting the directory path and try to add them all to our hashtable
+*/
+void
+upload(hashtable *table, char * path)
+{
+    DIR *dir;
+    int res, pos;
+    unsigned char tmp[20];
+    char *curr_path;
+    buffer *buf;
+    benc *result;
+    ht_torrent *elmt;
+    struct dirent *entry;
+    struct stat st;
+
+    if((dir = opendir(path)) == NULL)
+	{ perror("(upload)cannot open directory\n"); return; }
+
+    while((entry = readdir(dir))){
+	curr_path = asprintf("%s/%s", path, entry->d_name);
+	if(!curr_path)
+	    { perror("(upload)asprintf"); return; }
+
+	if(strcmp(entry->d_name,".")==0 ||
+	   strcmp(entry->d_name,"..")==0)
+	    continue;
+
+	if(lstat(curr_path, &st)){
+	    perror("upload");
+	    continue;
+	}
+	//it's a normal file
+	if(S_ISREG(st.st_mode)){
+	    pos = strlen(entry->d_name) - 8;
+
+	    if(pos>=0 && strcmp(entry->d_name+pos,".torrent") == 0) {
+		buf = open_buffer(curr_path);
+		if(!buf) {
+		    fprintf(stderr, "(upload)open_buffer %s\n",curr_path);
+		    continue;
+		}
+
+		result = parsing(buf);
+		memcpy(tmp, result->hash, 20);
+
+		res = ht_load(table, result);
+		if(res == -1) {
+		    fprintf(stderr, "(upload)fscked append in ht_load.\n");
+		    exit(EXIT_FAILURE);
+		}
+		if(res == -2) {
+		    fprintf(stderr, "(upload)bad torrent file\n");
+		    free(curr_path);
+		    continue;
+		}
+
+		elmt = ht_get(table, tmp);
+		printf("tracker address: %s\n", elmt->tracker);
+		printf("path: %s\n", elmt->path);
+		printf("file length: %lld\n", (long long int)elmt->f_length);
+		printf("chunk size: %lld\n", (long long int)elmt->p_length);
+
+		close_buffer(buf);
+	    }
+	}
+	//is  a directory
+	else if(S_ISDIR(st.st_mode))
+	    upload(table, curr_path);
+
+	free(curr_path);
+	//cpc_yield;
+    }
+    closedir(dir);
+    return;
+}
+
+int
+main(int argc, char **argv)
+{
+    hashtable *table;
+    CURLcode global;
+
+    if(argc < 2 ){
+	fprintf(stderr, "Usage: %s folder\n", argv[0]);
+	exit(EXIT_FAILURE);
+    }
+
+    global = curl_global_init(CURL_GLOBAL_ALL);
+    assert(!global);
+
+    table = ht_create(10);
+    if(!table) {
+        perror("ht_create");
+        exit(EXIT_FAILURE);
+    }
+
+    upload(table, argv[1]);
+
+    cpc_spawn connection(trackers);
+
+    signal(SIGPIPE, SIG_IGN);
+    cpc_spawn listening(table);
+
+    cpc_main_loop();
+
+    curl_global_cleanup();
+
+    return 0;
+}

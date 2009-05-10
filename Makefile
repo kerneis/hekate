@@ -2,7 +2,7 @@
 CPC_DIR=/home/pejman/developement/stable
 CPC=/home/pejman/developement/stable/bin/cpc.native.exe
 
-CLIBS=-I $(CPC_DIR)/runtime -lcurl 
+CLIBS=-lcurl -I $(CPC_DIR)/runtime
 CFLAGS=-O3 -Wall -g $(CLIBS)
 
 LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -pthread
@@ -13,7 +13,7 @@ LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -pthr
 
 all: main
 
-main: sha1.o list.o hashtable.o parse.o tracker_conn.o server.o main.o
+main: sha1.o list.o hashtable.o parse.o tracker_io.o server.o main.o
 
 clean:
 	rm -f *.o *~ *.cpi
