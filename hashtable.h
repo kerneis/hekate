@@ -47,6 +47,8 @@ typedef struct chunk{
 
     /* offset associated with a chunk in a file */
     int64_t offset;
+    int begin;
+    int length;
 
 }chunk;
 

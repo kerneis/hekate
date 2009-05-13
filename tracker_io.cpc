@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,10 +16,24 @@ generate_get(ht_torrent * t, CURL * e_handler)
 {
     int length;
     char *res , *hash;
-
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
+    
+    length =
+        strlen(t->tracker) /* url */
+        + 11 + strlen(hash) /* ?info_hash=_hash_ */
+        + 29 /* :peer_id=_peer_id_ */
+        + 6 + strlen(port) /* :port= */
+        + 11 /* :uploaded=0 */
+        + 13 /* :downloaded=0 */
+        + 7 /* :left=0 */
+        + 14 /* :event=started */
+	+1;
 
-    asprintf(res , "%s?info_hash=%s&peer_id=%.20s&port=%s&"
+    
+    res = malloc(length);
+    assert(res);
+    asprintf(NULL,"toto");
+    snprintf(res ,length, "%s?info_hash=%s&peer_id=%.20s&port=%s&"
 	     "uploaded=0&downloaded=0&left=0&event=started",
 	     t->tracker , hash, peer_id, port);
 

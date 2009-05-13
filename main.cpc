@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <dirent.h>
 #include <signal.h>
@@ -14,8 +15,6 @@
 #include "sha1.h"
 #include "tracker_io.h"
 
-#define FILESCHECK_TIMER 600
-
 /*
   getting the directory path and try to add them all to our hashtable
 */
@@ -23,7 +22,7 @@ void
 upload(hashtable *table, char * path)
 {
     DIR *dir;
-    int res, pos;
+    int res, pos, length;
     unsigned char tmp[20];
     char *curr_path;
     buffer *buf;
@@ -36,9 +35,12 @@ upload(hashtable *table, char * path)
 	{ perror("(upload)cannot open directory\n"); return; }
 
     while((entry = readdir(dir))){
-	curr_path = asprintf("%s/%s", path, entry->d_name);
+	length = strlen(path)+strlen(entry->d_name)+2;
+        curr_path = malloc(length);
+	snprintf(curr_path, length, "%s/%s", path, entry->d_name);
+	
 	if(!curr_path)
-	    { perror("(upload)asprintf"); return; }
+	    { perror("(upload)sprintf"); return; }
 
 	if(strcmp(entry->d_name,".")==0 ||
 	   strcmp(entry->d_name,"..")==0)
@@ -119,7 +121,7 @@ main(int argc, char **argv)
 
     signal(SIGPIPE, SIG_IGN);
     cpc_spawn listening(table);
-
+    
     cpc_main_loop();
 
     curl_global_cleanup();
