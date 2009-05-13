@@ -21,6 +21,8 @@
 #define DIR_LEN 512
 
 ht_torrent *test;
+/*XXX 1024 -> FD_MAX*/
+list* sended_chunk[1024];
 
 cps int
 cpc_read(int fd, void *buf, int length)
@@ -94,8 +96,9 @@ send_unchoke(int fd)
     return 0;
 }
 
+//send_chunk(int fd, int chunk , int begin, int length)
 cps int
-send_chunk(int fd, int chunk, int begin, int length)
+send_chunk(int fd, chunk *chunk)
 {
     int file;
     unsigned char buf[13];
@@ -104,13 +107,14 @@ send_chunk(int fd, int chunk, int begin, int length)
 
     t = test; /* XXX */
     printf("send chunk: length=%d, offset=%lld\n",
-	   length, (long long int)chunk*t->p_length+begin);
+	   chunk->length, 
+	   (long long int)chunk->offset*t->p_length+chunk->begin);
 
-    *((uint32_t *)buf) = htonl(length+9);
+    *((uint32_t *)buf) = htonl(chunk->length+9);
     buf[4] = 7;
 
-    *((uint32_t *)(buf+5)) = htonl(chunk);
-    *((uint32_t *)(buf+9)) = htonl(begin);
+    *((uint32_t *)(buf+5)) = htonl(chunk->offset);
+    *((uint32_t *)(buf+9)) = htonl(chunk->begin);
 
     if(cpc_write(fd, buf, 13)<13){
 	perror("(send_unchoke)cpc_write");
@@ -123,20 +127,21 @@ send_chunk(int fd, int chunk, int begin, int length)
 	return -1;
     }
 
-    source = mmap(NULL, length, PROT_READ, MAP_PRIVATE,
-		  file, chunk*t->p_length+begin);
+    source = mmap(NULL, chunk->length, PROT_READ, MAP_PRIVATE,
+		  file, 
+		  chunk->offset*t->p_length+chunk->begin);
     if(source==MAP_FAILED){
 	perror("(send_chunk)mmap source");
 	return -1;
     }
 
-    if(cpc_write(fd, source, length)<length){
+    if(cpc_write(fd, source, chunk->length)<chunk->length){
 	perror("(send_chunk)write");
-	munmap(source, length);
+	munmap(source, chunk->length);
 	return -1;
     }
 
-    if(munmap(source, length)){
+    if(munmap(source, chunk->length)){
 	perror("(send_chunk)munmap");
 	return -1;
     }
@@ -242,8 +247,10 @@ stream_read(int fd)
     //non-keepalive message
     /* beware of malloc size, should never be >12 except for bitfield */
     res = malloc(length);
+    assert(res);
     if(cpc_read(fd, res, length)<0){
 	perror("(stream_read)cpc_read");
+printf("1\n");
 	free(res);
 	return -1;
     }
@@ -252,6 +259,7 @@ stream_read(int fd)
     printf("message length: %d, type: %d\n", length, res[0]);
     switch(res[0]) {
     case  7 : case  5 : case 0: case 4:
+printf("2\n");
 	free(res);
 	return 0;
     case  1 :
@@ -284,11 +292,13 @@ stream_read(int fd)
 	       ntohl(*((int32_t *)(res+9))) );
 	break;
     default :
+printf("3\n");
 	free(res);
 	fprintf(stderr , "(stream_read)Someone sending weird message\n");
 	//not supported by protocol
 	return -1;
     }
+printf("4\n");
     free(res);
     return 0;
 }
@@ -334,7 +344,7 @@ listening(hashtable * table)
     socklen_t cli_len;
     struct sockaddr_in serv_addr, cli_addr;
 
-    socket_fd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0);
+    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(socket_fd<0)  { perror("(listening)socket");return; }
     rc = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
     if(rc) { perror("(listening)setsockopt");return; }

@@ -11,5 +11,6 @@ struct list{
 };
 
 list *linsert_tracker(ht_torrent * t);
+list *add(list * l , void * elmt);
 
 #endif

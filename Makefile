@@ -1,11 +1,10 @@
-#CPC_DIR=/home/kerneis/cpc/stable
 CPC_DIR=/home/pejman/developement/stable
-CPC=/home/pejman/developement/stable/bin/cpc.native.exe
+CPC=$(CPC_DIR)/bin/cpc.asm.exe
 
-CLIBS=-lcurl -I $(CPC_DIR)/runtime
+CLIBS=-lcurl -I $(CPC_DIR)/runtime -I $(CPC_DIR)/libev
 CFLAGS=-O3 -Wall -g $(CLIBS)
 
-LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -pthread
+LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.o -lm -pthread
 
 .SUFFIXES: .cpc .cpi
 
@@ -20,7 +19,7 @@ clean:
 	rm -f main
 
 .cpc.cpi:
-	$(CPP) -P $(CFLAGS) -include cpc_runtime.h \
+	gcc -E $(CFLAGS) -include cpc_runtime.h \
 	  - <$< >$@
 .cpi.c:
 	$(CPC) $< --out $@
