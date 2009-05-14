@@ -19,7 +19,7 @@ clean:
 	rm -f main
 
 .cpc.cpi:
-	gcc -E $(CFLAGS) -include cpc_runtime.h \
-	  - <$< >$@
+	gcc -E -x c $(CFLAGS) -include cpc_runtime.h \
+	  -o $@ $<
 .cpi.c:
 	$(CPC) $< --out $@
