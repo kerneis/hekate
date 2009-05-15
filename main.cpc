@@ -117,7 +117,7 @@ main(int argc, char **argv)
 
     upload(table, argv[1]);
 
-    cpc_spawn connection(trackers);
+    cpc_spawn {int x = connection(trackers);}
 
     signal(SIGPIPE, SIG_IGN);
     cpc_spawn listening(table);
