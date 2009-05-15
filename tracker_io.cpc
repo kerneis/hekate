@@ -79,8 +79,8 @@ connection(list *trackers){
 
 	    cpc_detach;
 	    rc = curl_easy_perform(e_handle);
-	    if(!rc) goto curl_error;
 	    cpc_attach;
+	    if(!rc) goto curl_error;
 
 	    free(url);
 	}while((current  = current -> next));
