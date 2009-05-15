@@ -364,10 +364,11 @@ listening(hashtable * table)
 	while(1){
 	    cli_len = sizeof(cli_addr);
 
-	    cpc_io_wait(client_fd, CPC_IO_IN);
+	    cpc_io_wait(socket_fd, CPC_IO_IN);
 	    client_fd = accept(socket_fd ,
 			       (struct sockaddr *) &cli_addr ,
 			       &cli_len );
+        fprintf(stderr,"Got a connection!\n");
 	    if(client_fd<0 && errno!=EAGAIN && errno!=EWOULDBLOCK)
 		{ perror("(listening)accept"); return; }
 
