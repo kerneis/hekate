@@ -52,6 +52,6 @@ typedef struct chunk{
 
 }chunk;
 
-int ht_load(hashtable * table, benc *raw);
-int ht_info_load(ht_torrent * elmt, benc *raw);
+int ht_load(hashtable * table, char *curr_path, benc *raw);
+int ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw);
 #endif
