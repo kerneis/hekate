@@ -17,6 +17,7 @@ generate_get(ht_torrent * t, CURL * e_handler)
 {
     int length;
     char *res , *hash;
+
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
     
     length =
@@ -102,7 +103,8 @@ init_trackers(list *trackers)
     list *current = trackers;
 
     while(current){
-	cpc_spawn connection(current, 0);
+	
+	cpc_spawn connection(current->elmt, 0);	
 	current = current->next;
     }
 }
