@@ -250,7 +250,6 @@ stream_read(int fd)
     assert(res);
     if(cpc_read(fd, res, length)<0){
 	perror("(stream_read)cpc_read");
-printf("1\n");
 	free(res);
 	return -1;
     }
@@ -259,7 +258,6 @@ printf("1\n");
     printf("message length: %d, type: %d\n", length, res[0]);
     switch(res[0]) {
     case  7 : case  5 : case 0: case 4:
-printf("2\n");
 	free(res);
 	return 0;
     case  1 :
@@ -292,13 +290,11 @@ printf("2\n");
 	       ntohl(*((int32_t *)(res+9))) );
 	break;
     default :
-printf("3\n");
 	free(res);
 	fprintf(stderr , "(stream_read)Someone sending weird message\n");
 	//not supported by protocol
 	return -1;
     }
-printf("4\n");
     free(res);
     return 0;
 }

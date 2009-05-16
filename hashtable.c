@@ -66,9 +66,8 @@ int
 ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 {
     int i, c, path_length;
-    int64_t j;
     char *path;
-    /* int64_t chunks_num;
+    /* int64_t j, chunks_num;
        chunk *chunk; */
 
     c=0; /* Use the fact that dictionnary are sorted */
