@@ -79,46 +79,47 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 
 	switch(c){
 	case 0:
-	    if(!strcmp((raw->set.l[i])->s, "length") &&
+	    if(strcmp((raw->set.l[i])->s, "length")==0 &&
 	       (raw->set.l[i+1])->type == INT ) {
 		elmt->f_length = (raw->set.l[i+1])->i;
 		c++;
 	    }
-	    if(!strcmp((raw->set.l[i])->s, "files")){
+	    if(strcmp((raw->set.l[i])->s, "files")==0){
 		return -2; /* TODO: multiple files case */
 		c++;
 	    }
 	    break;
 
 	case 1:
-	    if(!strcmp((raw->set.l[i])->s, "name") &&
+	    if(strcmp((raw->set.l[i])->s, "name")==0 &&
 	       (raw->set.l[i+1])->type == STRING ) {
 		path_length = strlen(raw->set.l[i+1]->s)+strlen(curr_path)+2;
 		if(!(path=malloc(path_length))){
 		    perror("(ht_info_load)malloc");
 		    return -1;
 		}
-		snprintf(curr_path, path_length, "%s/%s", curr_path, (raw->set.l[i+1])->s);
+		snprintf(curr_path, path_length, "%s/%s",
+			 curr_path, (raw->set.l[i+1])->s);
 		elmt->path = curr_path;
 		c++;
 	    }
-	       break;
+	    break;
 
-	    case 2:
-	    if(!strcmp((raw->set.l[i])->s, "piece length") &&
+	case 2:
+	    if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
 	       (raw->set.l[i+1])->type == INT) {
 		elmt->p_length = (raw->set.l[i+1])->i;
 		c++;
-		break;
 	    }
+	    break;
 
 	case 3:
 	    /* TODO: multiple files case */
-	    if(!strcmp((raw->set.l[i])->s, "pieces") &&
+	    if(strcmp((raw->set.l[i])->s, "pieces")==0 &&
 	       (raw->set.l[i+1])->type == STRING ) {
 		c++;
-		break;
 	    }
+	    break;
 
 	default:
 	    return 0;
@@ -152,7 +153,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 
 	switch(c){
 	case 0:
-	    if(!strcmp((raw->set.l[i])->s, "announce") &&
+	    if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
 	       (raw->set.l[i+1])->type == STRING ) {
 		elmt->tracker = (raw->set.l[i+1])->s;
 		raw->set.l[i+1]->s = NULL;
@@ -161,7 +162,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 	    break;
 
 	case 1:
-	    if(!strcmp((raw->set.l[i])->s, "info") &&
+	    if(strcmp((raw->set.l[i])->s, "info") == 0&&
 	       (raw->set.l[i+1])->type == DICT ) {
 		if((rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]))<0){
 		    free_benc(raw);
@@ -177,13 +178,10 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
     }
 
     /* was the .torrent complete? */
-    if(elmt->path == NULL ||
-       elmt->tracker == NULL ||
-       elmt->f_length == 0 ||
-       elmt->p_length == 0 ||
-       elmt->hash == NULL ) {
+    if(!(elmt->path) || !(elmt->tracker) ||
+       !(elmt->f_length) || !(elmt->p_length)) {
         free_benc(raw);
-        return -2;
+	return -2;
     }
     /* insert in hashtable */
     if(!(elmt->info_hash=ht_insert(table, raw->hash, elmt))) {
