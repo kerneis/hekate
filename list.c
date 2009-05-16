@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -6,32 +7,34 @@
 #include "hashtable.h"
 #include "tracker_io.h"
 
-list *
-linsert_tracker(ht_torrent * t)
+void
+tr_insert(ht_torrent *t, char *url)
 {
-    list *i, *tmp;
-    list *e = malloc(sizeof(list));
-    if(!e) return NULL;
+    tr_list *tmp;
+    to_list *to_elmt;
 
-    e->elmt = t;
-    e->next = NULL;
+    if(!(to_elmt=malloc(sizeof(to_list)))){
+	perror("(tr_insert)Unable to add torrent in list.");
+	return;
+    }
+    to_elmt->elmt = t;
 
-    i = trackers;
-    if(trackers){
-	while(!i->next){
-	    if(!strcmp(t->tracker, ((ht_torrent *)((list *)(i->elmt))->elmt)->tracker)){
-		e->next = ((list *)(i->elmt))->elmt;
-		i->elmt = e;
-		return i;
-	    }
-	    i = i->next;
+    for(tmp=trackers; tmp; tmp=tmp->next){
+	if(strcmp(tmp->url, url)==0){
+	    free(url);
+	    to_elmt->next = tmp->head;
+	    tmp->head = to_elmt;
+	    return;
 	}
     }
 
-    tmp = malloc(sizeof(list));
-    if(!tmp) return NULL;
-
-    tmp->elmt = e;
+    if(!(tmp=malloc(sizeof(tr_list)))){
+	perror("(tr_insert)Unable to create trackers list.");
+	exit(EXIT_FAILURE);
+    }
+    to_elmt->next = NULL;
+    tmp->url = url;
+    tmp->head = to_elmt;
     tmp->next = trackers;
     trackers = tmp;
 
@@ -41,17 +44,17 @@ linsert_tracker(ht_torrent * t)
 list*
 add(list * l ,void * elmt){
     list * tmp = l;
-
+    
     while( tmp && tmp->next )
 	tmp = tmp -> next;
-
+    
     if(!tmp){
 	tmp = malloc(sizeof(list));
 	tmp -> elmt = elmt;
 	tmp -> next = NULL;
 	return tmp;
     }
-
+    
     else{
 	//tmp -> next == NULL
 	tmp -> next = malloc(sizeof(list));

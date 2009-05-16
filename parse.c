@@ -155,8 +155,10 @@ parse_int(buffer *b, char c, char end)
         c = get_byte(b);
     }
     while(c != end) {
-        if(!isdigit(c))
-            exit(1); /* XXX fail more gracefully? this includes eof */
+        if(!isdigit(c)){
+	    fprintf(stderr, "(parse_int)bad written torrent\n");
+            exit(EXIT_FAILURE); /* XXX fail more gracefully? this includes eof */
+	}
         r = r * 10LL + ((int64_t)(c - '0'));
         c = get_byte(b);
     }
@@ -236,6 +238,7 @@ parsing(buffer *b)
 void
 free_benc(benc *node)
 {
+    return;
     int i;
     switch(node->type) {
         case INT:

@@ -3,14 +3,18 @@
 
 #include "hashtable.h"
 
-typedef struct list list;
 
-struct list{
-    void *elmt;
-    struct list *next;
-};
+typedef struct to_list{
+    ht_torrent *elmt;
+    struct to_list *next;
+} to_list;
 
-list *linsert_tracker(ht_torrent * t);
-list *add(list * l , void * elmt);
 
+typedef struct tr_list{
+    char *url;
+    to_list *head;
+    struct tr_list *next;
+} tr_list;
+
+void tr_insert(ht_torrent * t, char *url);
 #endif

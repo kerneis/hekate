@@ -21,8 +21,6 @@
 #define DIR_LEN 512
 
 ht_torrent *test;
-/*XXX 1024 -> FD_MAX*/
-list* sended_chunk[1024];
 
 cps int
 cpc_read(int fd, void *buf, int length)
@@ -312,22 +310,22 @@ stream_write(int fd)
 }
 
 cps void
-client(hashtable * t , int client_fd ){
+client(hashtable *t, int client_fd){
     int rc;
-
     unsigned char buffer[BUF_LEGNTH];
+
     rc = handshake(t , client_fd);
     if(rc == EXIT_FAILURE){
 	fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
 	return;
     }
-    
+
     cpc_spawn stream_write(client_fd);
 
     while(1)
 	if(stream_read(client_fd)<0)
 	    break;
-    
+
     close(client_fd);
     return;
 }
