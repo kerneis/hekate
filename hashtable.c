@@ -98,7 +98,7 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 		    perror("(ht_info_load)malloc");
 		    return -1;
 		}
-		snprintf(path, path_length, "%s/%s",
+		snprintf(curr_path, path_length, "%s/%s",
 			 curr_path, (raw->set.l[i+1])->s);
 		elmt->path = curr_path;
 		c++;
@@ -133,6 +133,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 {
     int i, c, rc;
     ht_torrent * elmt;
+    char *url = NULL;
 
     if(!(elmt = malloc(sizeof(ht_torrent)))) {
         perror("ht_load");
@@ -155,7 +156,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 	case 0:
 	    if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
 	       (raw->set.l[i+1])->type == STRING ) {
-		elmt->tracker = (raw->set.l[i+1])->s;
+		url = (raw->set.l[i+1])->s;
 		raw->set.l[i+1]->s = NULL;
 		c++;
 	    }
@@ -178,21 +179,19 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
     }
 
     /* was the .torrent complete? */
-    if(!(elmt->path) || !(elmt->tracker) ||
+    if(!url || !(elmt->path) ||
        !(elmt->f_length) || !(elmt->p_length)) {
         free_benc(raw);
 	return -2;
     }
+
     /* insert in hashtable */
     if(!(elmt->info_hash=ht_insert(table, raw->hash, elmt))) {
         perror("ht_insert");
         return -1;
     }
     /* insert in trackers list */
-    if(!linsert_tracker(elmt)) {
-	perror("linsert");
-	return -1;
-    }
+    tr_insert(elmt, url);
 
     free_benc(raw);
     return 0;

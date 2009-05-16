@@ -31,9 +31,6 @@ typedef struct ht_torrent{
     /* pieces size in bytes */
     int64_t p_length;
 
-    /* address of the tracker */
-    char * tracker;
-
     /* hastable containing the sha1/offset_in_file for each chunk */
     hashtable * hash;
   

@@ -5,8 +5,7 @@
 
 char *port;
 char *peer_id;
-list *trackers;
+tr_list *trackers;
 
-int init_trackers(list * trackers);
-
+void init_trackers();
 #endif

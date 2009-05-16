@@ -77,7 +77,6 @@ upload(hashtable *table, char * path)
 		}
 
 		elmt = ht_get(table, tmp);
-		printf("tracker address: %s\n", elmt->tracker);
 		printf("path: %s\n", elmt->path);
 		printf("file length: %lld\n", (long long int)elmt->f_length);
 		printf("chunk size: %lld\n", (long long int)elmt->p_length);
@@ -108,6 +107,8 @@ main(int argc, char **argv)
 
     global = curl_global_init(CURL_GLOBAL_ALL);
     assert(!global);
+
+    trackers=NULL;
 
     table = ht_create(10);
     if(!table) {

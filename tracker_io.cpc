@@ -6,6 +6,7 @@
 
 #include "hashtable.h"
 #include "list.h"
+#include "tracker_io.h"
 
 #define TRACKER_TIMER 1800
 
@@ -13,7 +14,7 @@ char *peer_id = "BittorrentSeeder-000"; /* XXX escape the peer_id somewhere */
 char *port = "6969";
 
 char *
-generate_get(ht_torrent * t, CURL * e_handler)
+generate_get(char *url, ht_torrent * t, CURL *e_handler)
 {
     int length;
     char *res , *hash;
@@ -21,7 +22,7 @@ generate_get(ht_torrent * t, CURL * e_handler)
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
     
     length =
-        strlen(t->tracker)  /* url */
+        strlen(url)         /* url */
         + 11 + strlen(hash) /* ?info_hash=_hash_ */
         + 29                /* :peer_id=_peer_id_ */
         + 6 + strlen(port)  /* :port= */
@@ -31,12 +32,12 @@ generate_get(ht_torrent * t, CURL * e_handler)
         + 14                /* :event=started */
 	+1;
 
-    
+
     res = malloc(length);
     assert(res);
     snprintf(res ,length, "%s?info_hash=%s&peer_id=%.20s&port=%s&"
 	     "uploaded=0&downloaded=0&left=0&event=started",
-	     t->tracker , hash, peer_id, port);
+	     url , hash, peer_id, port);
 
     curl_free(hash);
     return res;
@@ -51,31 +52,33 @@ writer(void  *ptr ,size_t size ,size_t nmemb,void *stream )
 }
 
 cps void
-connection(list *torrents, int timer)
+connection(tr_list *tracker, int timer)
 {
     CURLcode rc;
     CURL *e_handle;
-    char *url, *tracker;
-    list *current;
+    char *request;
+    to_list *current;
 
     cpc_sleep(timer);
 
-    if(!(current=torrents)) return;
-    tracker = ((ht_torrent *)current->elmt)->tracker;
+    current = tracker->head;
 
-    if(strncmp(tracker ,"http://",7 ) != 0){
-	fprintf(stderr,"(connection)bad tracker url: %s\n", tracker);
+    if(strncmp(tracker->url, "http://", 7) != 0){
+	fprintf(stderr, "(connection)bad tracker url: %s\n",
+		tracker->url);
 	return;
-    }
+    };
+
+    e_handle = curl_easy_init();
 
     do{
-	url = generate_get((ht_torrent *)current->elmt , e_handle);
-	if(!url){ perror("(connection)generate_get"); continue; }
+	request = generate_get(tracker->url, current->elmt, e_handle);
+	if(!request){ perror("(connection)generate_get"); continue; }
 
-	rc = curl_easy_setopt(e_handle ,CURLOPT_URL ,url );
+	rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
 	if(rc!=CURLE_OK) goto curl_error;
 
-	rc = curl_easy_setopt(e_handle ,CURLOPT_WRITEFUNCTION ,writer );
+	rc = curl_easy_setopt(e_handle,CURLOPT_WRITEFUNCTION, writer);
 	if(rc!=CURLE_OK) goto curl_error;
 
 	cpc_detach;
@@ -83,29 +86,28 @@ connection(list *torrents, int timer)
 	cpc_attach;
 	if(!rc) goto curl_error;
 
-	free(url);
-    } while((current  = current -> next));
+	free(request);
+    } while((current  = current->next));
 
     curl_easy_cleanup(e_handle);
 
-    cpc_spawn(torrents, TRACKER_TIMER);
+    cpc_spawn(tracker, TRACKER_TIMER);
 
     return;
 
  curl_error:
-    curl_easy_strerror(rc);
+    fprintf(stderr, "curl error: %s\n", curl_easy_strerror(rc));
     exit(EXIT_FAILURE);
 }
 
 void
-init_trackers(list *trackers)
+init_trackers()
 {
-    list *current = trackers;
-
+    tr_list *current = trackers;
+    /* TODO useless with a new .torrent checker daemon */
+    assert(trackers);
     while(current){
-	
-	cpc_spawn connection(current->elmt, 0);	
+	cpc_spawn connection(current, 0);
 	current = current->next;
     }
 }
-
