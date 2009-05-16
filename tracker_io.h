@@ -7,6 +7,6 @@ char *port;
 char *peer_id;
 list *trackers;
 
-cps int connection(list * trackers);
+int init_trackers(list * trackers);
 
 #endif

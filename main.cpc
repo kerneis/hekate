@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <assert.h>
 #include <dirent.h>
 #include <signal.h>
@@ -117,7 +116,7 @@ main(int argc, char **argv)
 
     upload(table, argv[1]);
 
-    cpc_spawn {int x = connection(trackers);}
+    init_trackers(trackers);
 
     signal(SIGPIPE, SIG_IGN);
     cpc_spawn listening(table);
