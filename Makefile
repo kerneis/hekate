@@ -1,4 +1,4 @@
-CPC_DIR=/home/pejman/developement/stable
+CPC_DIR=/home/pejman/developement/cpc
 CPC=$(CPC_DIR)/bin/cpc.asm.exe
 
 CLIBS=-lcurl -I $(CPC_DIR)/runtime -I $(CPC_DIR)/libev

@@ -41,17 +41,17 @@ linsert_tracker(ht_torrent * t)
 list*
 add(list * l ,void * elmt){
     list * tmp = l;
-    
+
     while( tmp && tmp->next )
 	tmp = tmp -> next;
-    
+
     if(!tmp){
 	tmp = malloc(sizeof(list));
 	tmp -> elmt = elmt;
 	tmp -> next = NULL;
 	return tmp;
     }
-    
+
     else{
 	//tmp -> next == NULL
 	tmp -> next = malloc(sizeof(list));
