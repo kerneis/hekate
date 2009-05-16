@@ -63,7 +63,7 @@ connection(list *torrents, int timer)
     tracker = ((ht_torrent *)current->elmt)->tracker;
 
     if(strncmp(tracker ,"http://",7 ) != 0){
-	fprintf(stderr,"(connection)bad tracker url : %s\n", tracker);
+	fprintf(stderr,"(connection)bad tracker url: %s\n", tracker);
 	return;
     }
 

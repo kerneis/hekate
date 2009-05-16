@@ -37,7 +37,7 @@ upload(hashtable *table, char * path)
 	length = strlen(path)+strlen(entry->d_name)+2;
         curr_path = malloc(length);
 	snprintf(curr_path, length, "%s/%s", path, entry->d_name);
-	
+
 	if(!curr_path)
 	    { perror("(upload)sprintf"); return; }
 
@@ -46,10 +46,11 @@ upload(hashtable *table, char * path)
 	    continue;
 
 	if(lstat(curr_path, &st)){
-	    perror("upload");
+	    fprintf(stderr, "%s ", curr_path);
+	    perror("(upload)lstat");
 	    continue;
 	}
-	//it's a normal file
+	/* it's a normal file */
 	if(S_ISREG(st.st_mode)){
 	    pos = strlen(entry->d_name) - 8;
 
@@ -63,13 +64,13 @@ upload(hashtable *table, char * path)
 		result = parsing(buf);
 		memcpy(tmp, result->hash, 20);
 
-		res = ht_load(table, curr_path, result);
+		res = ht_load(table, path, result);
 		if(res == -1) {
 		    fprintf(stderr, "(upload)fscked append in ht_load.\n");
 		    exit(EXIT_FAILURE);
 		}
 		if(res == -2) {
-		    fprintf(stderr, "(upload)bad torrent file\n");
+		    fprintf(stderr, "(upload)bad torrent file: %s\n", curr_path);
 		    free(curr_path);
 		    continue;
 		}
@@ -83,12 +84,11 @@ upload(hashtable *table, char * path)
 		close_buffer(buf);
 	    }
 	}
-	//is  a directory
+	/* is  a directory */
 	else if(S_ISDIR(st.st_mode))
 	    upload(table, curr_path);
 
 	free(curr_path);
-	//cpc_yield;
     }
     closedir(dir);
     return;

@@ -207,17 +207,17 @@ parsing(buffer *b)
             r->i = parse_int(b,get_byte(b),'e');
             break;
         case 'd':
-            printf("dict!\n");
+            /* printf("dict!\n"); */
             r = make_benc(DICT);
             parse_dict(b, r);
             return r;
         case 'l':
-            printf("list!\n");
+            /* printf("list!\n"); */
             r = make_benc(LIST);
             parse_list(b, r);
             return r;
         case 'e': /* end of a list or dict: return NULL */
-            printf("end!\n");
+            /* printf("end!\n"); */
             break;
         default:
             if(!isdigit(c)) {
@@ -228,7 +228,7 @@ parsing(buffer *b)
             r = make_benc(STRING);
             n = parse_int(b,c,':');
             r->s = get_string(b,n);
-            printf("string of length %lld\n", (long long int)n);
+            /* printf("string of length %lld\n", (long long int)n); */
     }
     return r;
 }
