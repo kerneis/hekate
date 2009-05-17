@@ -40,7 +40,7 @@ upload(hashtable *table, char * path)
 	snprintf(curr_path, length, "%s/%s", path, entry->d_name);
 	if(!curr_path)
 	    { perror("(upload)sprintf"); return; }
-	
+
 	if(strcmp(entry->d_name,".")==0 ||
 	   strcmp(entry->d_name,"..")==0)
 	    continue;
@@ -53,19 +53,19 @@ upload(hashtable *table, char * path)
 	/* it's a normal file */
 	if(S_ISREG(st.st_mode)){
 	    pos = strlen(entry->d_name) - 8;
-	
+
 	    if(pos>=0 && strcmp(entry->d_name+pos,".torrent") == 0) {
 		buf = open_buffer(curr_path);
 		if(!buf) {
 		    fprintf(stderr, "(upload)open_buffer %s\n",curr_path);
 		    continue;
 		}
-		
+
 		result = parsing(buf);
 		memcpy(tmp, result->hash, 20);
-		
+
 		res = ht_load(table, path, result);
-		
+
 		if(res == -1) {
 		    fprintf(stderr, "(upload)fscked append in ht_load.\n");
 		    exit(EXIT_FAILURE);
