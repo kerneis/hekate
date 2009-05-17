@@ -21,6 +21,8 @@
 #define DIR_LEN 512
 
 ht_torrent *test;
+/*XXX 1024 -> FD_MAX*/
+flist* sended_chunk[1024];
 
 cps int
 cpc_read(int fd, void *buf, int length)
