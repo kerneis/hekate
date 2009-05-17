@@ -37,8 +37,6 @@ tr_insert(ht_torrent *t, char *url)
     tmp->head = to_elmt;
     tmp->next = trackers;
     trackers = tmp;
-
-    return tmp;
 }
 
 list*
@@ -47,7 +45,7 @@ add(list * l ,void * elmt){
     
     while( tmp && tmp->next )
 	tmp = tmp -> next;
-    
+
     if(!tmp){
 	tmp = malloc(sizeof(list));
 	tmp -> elmt = elmt;
@@ -62,5 +60,6 @@ add(list * l ,void * elmt){
 	tmp -> next -> next = NULL;
 	return l;
     }
+
     return l;
 }

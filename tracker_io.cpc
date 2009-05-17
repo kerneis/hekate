@@ -1,8 +1,8 @@
+#include <curl/curl.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <curl/curl.h>
 
 #include "hashtable.h"
 #include "list.h"
@@ -52,51 +52,58 @@ writer(void  *ptr ,size_t size ,size_t nmemb,void *stream )
 }
 
 cps void
-connection(tr_list *tracker, int timer)
+connection(tr_list *trackers, int timer)
 {
-    CURLcode rc;
-    CURL *e_handle;
-    char *request;
-    to_list *current;
+
+    CURLcode rc = NULL;
+    CURL *e_handle = NULL;
+    char *request = NULL, *tracker = NULL;
+    to_list *current = NULL;
 
     cpc_sleep(timer);
 
-    current = tracker->head;
+    current = trackers->head;
 
-    if(strncmp(tracker->url, "http://", 7) != 0){
+    if(strncmp(trackers->url, "http://", 7) != 0){
 	fprintf(stderr, "(connection)bad tracker url: %s\n",
-		tracker->url);
+		trackers->url);
 	return;
     };
 
     e_handle = curl_easy_init();
-
+    if(!e_handle) goto curl_error;
+    
     do{
-	request = generate_get(tracker->url, current->elmt, e_handle);
-	if(!request){ perror("(connection)generate_get"); continue; }
+	request = generate_get(trackers->url, current->elmt, e_handle);
+	if(!request){ 
+	    perror("(connection)generate_get"); 
+	    continue; 
+	}
 
 	rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
 	if(rc!=CURLE_OK) goto curl_error;
-
+	
 	rc = curl_easy_setopt(e_handle,CURLOPT_WRITEFUNCTION, writer);
 	if(rc!=CURLE_OK) goto curl_error;
 
 	cpc_detach;
 	rc = curl_easy_perform(e_handle);
 	cpc_attach;
-	if(!rc) goto curl_error;
+
+	if(rc != 0) goto curl_error;
 
 	free(request);
     } while((current  = current->next));
 
     curl_easy_cleanup(e_handle);
 
-    cpc_spawn(tracker, TRACKER_TIMER);
+    cpc_spawn(trackers, TRACKER_TIMER);
 
     return;
-
+    
  curl_error:
     fprintf(stderr, "curl error: %s\n", curl_easy_strerror(rc));
+    curl_easy_strerror(rc);
     exit(EXIT_FAILURE);
 }
 
@@ -107,7 +114,9 @@ init_trackers()
     /* TODO useless with a new .torrent checker daemon */
     assert(trackers);
     while(current){
-	cpc_spawn connection(current, 0);
+
+	cpc_spawn connection(current->head, 0);
+	
 	current = current->next;
     }
 }
