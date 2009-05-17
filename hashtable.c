@@ -89,22 +89,20 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
                 c++;
             }
             break;
-
-	case 1:
-	    if(strcmp((raw->set.l[i])->s, "name")==0 &&
-	       (raw->set.l[i+1])->type == STRING ) {
-		path_length = strlen(raw->set.l[i+1]->s)+strlen(curr_path)+2;
-		if(!(path=malloc(path_length))){
-		    perror("(ht_info_load)malloc");
-		    return -1;
-		}
-		snprintf(curr_path, path_length, "%s/%s",
-			 curr_path, (raw->set.l[i+1])->s);
-		elmt->path = curr_path;
-		c++;
-	    }
-	    break;
-
+        case 1:
+            if(strcmp((raw->set.l[i])->s, "name")==0 &&
+               (raw->set.l[i+1])->type == STRING ) {
+                path_length = strlen(raw->set.l[i+1]->s)+strlen(curr_path)+2;
+                if(!(path=malloc(path_length))){
+                    perror("(ht_info_load)malloc");
+                    return -1;
+                }
+                snprintf(path, path_length, "%s/%s",
+                         curr_path, (raw->set.l[i+1])->s);
+                elmt->path = curr_path;
+                c++;
+            }
+            break;
         case 2:
             if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
                (raw->set.l[i+1])->type == INT) {
@@ -152,16 +150,15 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
             return -2;
         }
 
-	switch(c){
-	case 0:
-	    if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
-	       (raw->set.l[i+1])->type == STRING ) {
-		elmt->tracker = (raw->set.l[i+1])->s;
-		raw->set.l[i+1]->s = NULL;
-		c++;
-	    }
-	    break;
-
+        switch(c){
+        case 0:
+            if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
+               (raw->set.l[i+1])->type == STRING ) {
+                elmt->tracker = (raw->set.l[i+1])->s;
+                raw->set.l[i+1]->s = NULL;
+                c++;
+            }
+            break;
         case 1:
             if(strcmp((raw->set.l[i])->s, "info") == 0&&
                (raw->set.l[i+1])->type == DICT ) {
@@ -192,10 +189,9 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
     }
     /* insert in trackers list */
     if(!linsert_tracker(elmt)) {
-	perror("linsert");
-	return -1;
+        perror("linsert");
+        return -1;
     }
-
     free_benc(raw);
     return 0;
 }

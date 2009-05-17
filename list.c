@@ -19,15 +19,12 @@ tr_insert(ht_torrent *t, char *url)
     }
     to_elmt->elmt = t;
 
-    i = trackers;
-    if(trackers){
-	while(!i->next){
-	    if(!strcmp(t->tracker, ((ht_torrent *)((list *)(i->elmt))->elmt)->tracker)){
-		e->next = ((list *)(i->elmt))->elmt;
-		i->elmt = e;
-		return i;
-	    }
-	    i = i->next;
+    for(tmp=trackers; tmp; tmp=tmp->next){
+	if(strcmp(tmp->url, url)==0){
+	    free(url);
+	    to_elmt->next = tmp->head;
+	    tmp->head = to_elmt;
+	    return;
 	}
     }
 
@@ -40,8 +37,6 @@ tr_insert(ht_torrent *t, char *url)
     tmp->head = to_elmt;
     tmp->next = trackers;
     trackers = tmp;
-
-    return tmp;
 }
 
 list*
