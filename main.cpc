@@ -53,7 +53,7 @@ upload(hashtable *table, char * path)
 	/* it's a normal file */
 	if(S_ISREG(st.st_mode)){
 	    pos = strlen(entry->d_name) - 8;
-	    
+	
 	    if(pos>=0 && strcmp(entry->d_name+pos,".torrent") == 0) {
 		buf = open_buffer(curr_path);
 		if(!buf) {
@@ -117,12 +117,12 @@ main(int argc, char **argv)
     }
 
     upload(table, argv[1]);
-    
+
     init_trackers(trackers);
 
     signal(SIGPIPE, SIG_IGN);
     cpc_spawn listening(table);
-    
+
     cpc_main_loop();
 
     curl_global_cleanup();

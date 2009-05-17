@@ -42,7 +42,7 @@ ht_insert(hashtable * ht, unsigned char *key, void *value)
     else
       hte->next = NULL;
     hte->content = value;
-    
+
     ht->table[h] = hte;
     return hte->key;
 }

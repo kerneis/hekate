@@ -107,7 +107,7 @@ send_chunk(int fd, piece *chunk)
 
     t = test; /* XXX */
     printf("send chunk: length=%d, offset=%lld\n",
-	   chunk->length, 
+	   chunk->length,
 	   (long long int)chunk->offset*t->p_length+chunk->begin);
 
     *((uint32_t *)buf) = htonl(chunk->length+9);
@@ -128,7 +128,7 @@ send_chunk(int fd, piece *chunk)
     }
 
     source = mmap(NULL, chunk->length, PROT_READ, MAP_PRIVATE,
-		  file, 
+		  file,
 		  chunk->offset*t->p_length+chunk->begin);
     if(source==MAP_FAILED){
 	perror("(send_chunk)mmap source");
@@ -149,7 +149,7 @@ send_chunk(int fd, piece *chunk)
     return 0;
 }
 /*
-  return EXIT_FAILURE if sth wrong happend in 
+  return EXIT_FAILURE if sth wrong happend in
   handshake otherwise return EXIT_SUCCESS
  */
 cps int
@@ -337,13 +337,13 @@ client(hashtable *t, int client_fd){
 	fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
 	return;
     }
-
+    
     cpc_spawn stream_write(client_fd);
 
     while(1)
 	if(stream_read(client_fd)<0)
 	    break;
-
+    
     close(client_fd);
     return;
 }

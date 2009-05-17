@@ -33,7 +33,7 @@ typedef struct ht_torrent{
 
     /* hastable containing the sha1/offset_in_file for each chunk */
     hashtable * hash;
-  
+
     unsigned char * info_hash;
 
 } ht_torrent;

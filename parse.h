@@ -42,6 +42,6 @@ typedef struct buffer {
 } buffer;
 
 buffer * open_buffer(const char * pathname);
-void close_buffer(buffer * b);      
+void close_buffer(buffer * b);
 benc * parsing(buffer * b);
 #endif
