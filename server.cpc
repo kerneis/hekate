@@ -98,7 +98,7 @@ send_unchoke(int fd)
 
 //send_chunk(int fd, int chunk , int begin, int length)
 cps int
-send_chunk(int fd, chunk *chunk)
+send_chunk(int fd, piece *chunk)
 {
     int file;
     unsigned char buf[13];
@@ -233,7 +233,8 @@ stream_read(int fd)
 {
     uint32_t tmp, length;
     char * res;
-
+    flist * fl_tmp;
+	
     if(cpc_read(fd, &tmp, 4)<4){
 	perror("(stream_read) didn't read 4 bytes");
 	return -1;
@@ -278,16 +279,27 @@ stream_read(int fd)
 
     case  6 ://request
 	printf("request: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int32_t *)(res+1))) ,
-	       ntohl(*((int32_t *)(res+5))) ,
-	       ntohl(*((int32_t *)(res+9))) );
+	       ntohl(*((int32_t *)(res+1))),
+	       ntohl(*((int32_t *)(res+5))),
+	       ntohl(*((int32_t *)(res+9))));
 	/* add request in request list */
+	fl_tmp = send_unchoke[fd];
+	fl_tmp->list = add_piece(fl_tmp->list,
+			      ntohl(*((int64_t *)(res+1))),
+			      ntohl(*((int32_t *)(res+5))),
+			      ntohl(*((int32_t *)(res+9))));
+	fl_tmp -> flag = 1;
 	break;
     case  8 ://cancel
 	printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int32_t *)(res+1))) ,
+	       ntohl(*((int64_t *)(res+1))) ,
 	       ntohl(*((int32_t *)(res+5))) ,
 	       ntohl(*((int32_t *)(res+9))) );
+	fl_tmp = send_unchoke[fd];
+	fl_tmp->list = remove_piece(fl_tmp->list,
+				 ntohl(*((int64_t *)(res+1))),
+				 ntohl(*((int32_t *)(res+5))),
+				 ntohl(*((int32_t *)(res+9))));
 	break;
     default :
 	free(res);
@@ -303,11 +315,15 @@ cps void
 stream_write(int fd)
 {
     //while request list non empty, send chunks
+    flist * fl_tmp;
+
+    
     /*
       send_chunk(fd, ntohl(*((int32_t *)(res+1))) ,
 		   ntohl(*((int32_t *)(res+5))) ,
 		   ntohl(*((int32_t *)(res+9))) );
     */
+    
     return;
 }
 
