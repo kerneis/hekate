@@ -22,7 +22,7 @@
 
 ht_torrent *test;
 /*XXX 1024 -> FD_MAX*/
-flist* sended_chunk[1024];
+flist* sended_pieces[1024];
 
 cps int
 cpc_full_read(int fd, void *buf, int length)
@@ -53,8 +53,8 @@ cpc_full_write(int fd, void *buf, int length)
 cps int
 send_bitfield(int fd, ht_torrent *t)
 {
-    int num_chunks, length;
-    unsigned char *buf;
+    int num_chunks = 0, length = 0;
+    unsigned char *buf= NULL;
 
     num_chunks = (t->f_length-1)/t->p_length+1;
     length = (num_chunks-1)/8+1;
@@ -67,10 +67,8 @@ send_bitfield(int fd, ht_torrent *t)
 
     /* XXX initialise only num_chunks to 1 */
     memset(buf+5, 0xFF, length);
-
     ((uint32_t *)buf)[0] = htonl(length+1);
     buf[4] = 5;
-
     printf("length=%d, type=%d\n", ntohl(((uint32_t *)buf)[0]), buf[4]);
 
     if(cpc_full_write(fd, buf, length+5)<0){
@@ -154,11 +152,11 @@ send_chunk(int fd, piece *chunk)
  */
 cps int
 handshake(hashtable *ht , int fd){
-    int rc;
+    int rc = 0;
     const char *protocol = "BitTorrent protocol";
     unsigned char hash[20];
-    char *res , *tmp , t[68];
-    ht_torrent *torrent;
+    char *res = NULL, *tmp = NULL, t[68];
+    ht_torrent *torrent = NULL;
 
     if(cpc_full_read(fd, t, 68)<68) {
         perror("(handshake)cpc_full_read");
@@ -231,9 +229,9 @@ handshake(hashtable *ht , int fd){
 cps int
 stream_read(int fd)
 {
-    uint32_t tmp, length;
-    char * res;
-    flist * fl_tmp;
+    uint32_t tmp = 0, length = 0;
+    char * res = NULL;
+    flist * fl_tmp = NULL;
 	
     if(cpc_full_read(fd, &tmp, 4)<4){
         perror("(stream_read) didn't read 4 bytes");
@@ -278,17 +276,29 @@ stream_read(int fd)
         break;
 
     case  6 ://request
-	printf("request: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int32_t *)(res+1))) ,
-	       ntohl(*((int32_t *)(res+5))) ,
-	       ntohl(*((int32_t *)(res+9))) );
-	/* add request in request list */
+        printf("request: index = %d \tbegin = %d\tlength = %d\n",
+               ntohl(*((int32_t *)(res+1))) ,
+               ntohl(*((int32_t *)(res+5))) ,
+               ntohl(*((int32_t *)(res+9))) );
+        /* add request in request list */
+	fl_tmp = send_unchoke[fd];
+	fl_tmp->list = add_piece(fl_tmp->list,
+			      ntohl(*((int64_t *)(res+1))),
+			      ntohl(*((int32_t *)(res+5))),
+			      ntohl(*((int32_t *)(res+9))));
+	fl_tmp -> flag = 1;
 	break;
     case  8 ://cancel
-	printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int32_t *)(res+1))) ,
-	       ntohl(*((int32_t *)(res+5))) ,
-	       ntohl(*((int32_t *)(res+9))) );
+        printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
+               ntohl(*((int32_t *)(res+1))) ,
+               ntohl(*((int32_t *)(res+5))) ,
+               ntohl(*((int32_t *)(res+9))) );
+
+	fl_tmp = send_unchoke[fd];
+	fl_tmp->list = remove_piece(fl_tmp->list,
+				 ntohl(*((int64_t *)(res+1))),
+				 ntohl(*((int32_t *)(res+5))),
+				 ntohl(*((int32_t *)(res+9))));
 	break;
     default :
         free(res);
@@ -304,21 +314,23 @@ cps void
 stream_write(int fd)
 {
     //while request list non empty, send chunks
-    flist * fl_tmp;
-
+    flist * fl_tmp = NULL;
+    pieces_list * pl = NULL;
     
-    /*
-      send_chunk(fd, ntohl(*((int32_t *)(res+1))) ,
-                   ntohl(*((int32_t *)(res+5))) ,
-                   ntohl(*((int32_t *)(res+9))) );
-    */
+    fl_tmp = sended_pieces[fd];
+    pl = fl_tmp -> list;
     
+    while((!pl) && (fl_tmp->flag != 0)){
+        send_chunk(fd, pl->elmt);
+        pl = pl -> next;
+    }
+    fl_tmp -> flag = 0;
     return;
 }
 
 cps void
 client(hashtable *t, int client_fd){
-    int rc;
+    int rc = 0;
     unsigned char buffer[BUF_LEGNTH];
 
     rc = handshake(t , client_fd);
@@ -326,13 +338,11 @@ client(hashtable *t, int client_fd){
         fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
         return;
     }
-    
     cpc_spawn stream_write(client_fd);
 
     while(1)
         if(stream_read(client_fd)<0)
             break;
-    
     close(client_fd);
     return;
 }

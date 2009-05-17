@@ -20,7 +20,11 @@ generate_get(char *url, ht_torrent * t, CURL *e_handler)
     char *res , *hash;
 
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
-    
+    if(!hash){
+	fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
+	/*XXX is this a real good idea to return a NULL?!*/
+	return NULL;
+    }
     length =
         strlen(url)         /* url */
         + 11 + strlen(hash) /* ?info_hash=_hash_ */
@@ -32,12 +36,11 @@ generate_get(char *url, ht_torrent * t, CURL *e_handler)
         + 14                /* :event=started */
         +1;
 
-    
     res = malloc(length);
     assert(res);
     snprintf(res ,length, "%s?info_hash=%s&peer_id=%.20s&port=%s&"
-	     "uploaded=0&downloaded=0&left=0&event=started",
-	     t->tracker , hash, peer_id, port);
+             "uploaded=0&downloaded=0&left=0&event=started",
+             t->tracker , hash, peer_id, port);
 
     curl_free(hash);
     return res;
@@ -64,8 +67,9 @@ connection(tr_list *trackers, int timer)
 
     current = trackers->head;
 
-    if(strncmp(tracker ,"http://",7 ) != 0){
-	fprintf(stderr,"(connection)bad tracker url: %s\n", tracker);
+    if(strncmp(trackers->url, "http://", 7) != 0){
+	fprintf(stderr, "(connection)bad tracker url: %s\n",
+		trackers->url);
 	return;
     };
 
@@ -73,21 +77,24 @@ connection(tr_list *trackers, int timer)
     if(!e_handle) goto curl_error;
     
     do{
-	url = generate_get((ht_torrent *)current->elmt , e_handle);
-	if(!url){ perror("(connection)generate_get"); continue; }
+	request = generate_get(trackers->url, current->elmt, e_handle);
+	if(!request){
+	    perror("(connection)generate_get");
+	    continue;
+	}
 
-	rc = curl_easy_setopt(e_handle ,CURLOPT_URL ,url );
-	if(rc!=CURLE_OK) goto curl_error;
+        rc = curl_easy_setopt(e_handle ,CURLOPT_URL ,url );
+        if(rc!=CURLE_OK) goto curl_error;
 	
-	rc = curl_easy_setopt(e_handle ,CURLOPT_WRITEFUNCTION ,writer );
-	if(rc!=CURLE_OK) goto curl_error;
+        rc = curl_easy_setopt(e_handle ,CURLOPT_WRITEFUNCTION ,writer );
+        if(rc!=CURLE_OK) goto curl_error;
 
-	cpc_detach;
-	rc = curl_easy_perform(e_handle);
-	cpc_attach;
-	if(!rc) goto curl_error;
+        cpc_detach;
+        rc = curl_easy_perform(e_handle);
+        cpc_attach;
+        if(!rc) goto curl_error;
 
-	free(url);
+        free(url);
     } while((current  = current -> next));
 
     curl_easy_cleanup(e_handle);
@@ -109,7 +116,7 @@ init_trackers()
     /* TODO useless with a new .torrent checker daemon */
     assert(trackers);
     while(current){
-	cpc_spawn connection(current, 0);
-	current = current->next;
+        cpc_spawn connection(current->elmt, 0);
+        current = current->next;
     }
 }
