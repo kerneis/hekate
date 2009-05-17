@@ -32,63 +32,64 @@ upload(hashtable *table, char * path)
     struct stat st;
 
     if((dir = opendir(path)) == NULL)
-	{ perror("(upload)cannot open directory\n"); return; }
+        { perror("(upload)cannot open directory\n"); return; }
 
     while((entry = readdir(dir))){
-	length = strlen(path)+strlen(entry->d_name)+2;
+        length = strlen(path)+strlen(entry->d_name)+2;
         curr_path = malloc(length);
-	snprintf(curr_path, length, "%s/%s", path, entry->d_name);
-	if(!curr_path)
-	    { perror("(upload)sprintf"); return; }
+        snprintf(curr_path, length, "%s/%s", path, entry->d_name);
+        if(!curr_path)
+            { perror("(upload)sprintf"); return; }
 
-	if(strcmp(entry->d_name,".")==0 ||
-	   strcmp(entry->d_name,"..")==0)
-	    continue;
+        if(strcmp(entry->d_name,".")==0 ||
+           strcmp(entry->d_name,"..")==0)
+            continue;
 
-	if(lstat(curr_path, &st)){
-	    fprintf(stderr, "%s ", curr_path);
-	    perror("(upload)lstat");
-	    continue;
-	}
-	/* it's a normal file */
-	if(S_ISREG(st.st_mode)){
-	    pos = strlen(entry->d_name) - 8;
+        if(lstat(curr_path, &st)){
+            fprintf(stderr, "%s ", curr_path);
+            perror("(upload)lstat");
+            continue;
+        }
+        /* it's a normal file */
+        if(S_ISREG(st.st_mode)){
+            pos = strlen(entry->d_name) - 8;
 
-	    if(pos>=0 && strcmp(entry->d_name+pos,".torrent") == 0) {
-		buf = open_buffer(curr_path);
-		if(!buf) {
-		    fprintf(stderr, "(upload)open_buffer %s\n",curr_path);
-		    continue;
-		}
+            if(pos>=0 && strcmp(entry->d_name+pos,".torrent") == 0) {
+                buf = open_buffer(curr_path);
+                if(!buf) {
+                    fprintf(stderr, "(upload)open_buffer %s\n",curr_path);
+                    continue;
+                }
 
-		result = parsing(buf);
-		memcpy(tmp, result->hash, 20);
+                result = parsing(buf);
+                memcpy(tmp, result->hash, 20);
 
-		res = ht_load(table, path, result);
+                res = ht_load(table, path, result);
 
-		if(res == -1) {
-		    fprintf(stderr, "(upload)fscked append in ht_load.\n");
-		    exit(EXIT_FAILURE);
-		}
-		if(res == -2) {
-		    fprintf(stderr, "(upload)bad torrent file: %s\n", curr_path);
-		    free(curr_path);
-		    continue;
-		}
+                if(res == -1) {
+                    fprintf(stderr, "(upload)fscked append in ht_load.\n");
+                    exit(EXIT_FAILURE);
+                }
+                if(res == -2) {
+                    fprintf(stderr, "(upload)bad torrent file: %s\n", curr_path);
+                    free(curr_path);
+                    continue;
+                }
 
 		elmt = ht_get(table, tmp);
+		printf("tracker address: %s\n", elmt->tracker);
 		printf("path: %s\n", elmt->path);
 		printf("file length: %lld\n", (long long int)elmt->f_length);
 		printf("chunk size: %lld\n", (long long int)elmt->p_length);
 
-		close_buffer(buf);
-	    }
-	}
-	/* is  a directory */
-	else if(S_ISDIR(st.st_mode))
-	    upload(table, curr_path);
+                close_buffer(buf);
+            }
+        }
+        /* is  a directory */
+        else if(S_ISDIR(st.st_mode))
+            upload(table, curr_path);
 
-	free(curr_path);
+        free(curr_path);
     }
     closedir(dir);
     return;
@@ -101,8 +102,8 @@ main(int argc, char **argv)
     CURLcode global;
 
     if(argc < 2 ){
-	fprintf(stderr, "Usage: %s folder\n", argv[0]);
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Usage: %s folder\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
 
     global = curl_global_init(CURL_GLOBAL_ALL);

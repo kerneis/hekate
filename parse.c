@@ -55,10 +55,10 @@ open_buffer(const char *pathname)
     buffer *b;
 
     if(!(fd = open(pathname, O_RDONLY|O_NONBLOCK)))
-	{ perror("open_buffer)open"); return NULL; }
+        { perror("open_buffer)open"); return NULL; }
 
     if(!(b = malloc(sizeof(buffer))))
-	{ perror("open_buffer)malloc"); close(fd); return NULL; }
+        { perror("open_buffer)malloc"); close(fd); return NULL; }
 
     b->fd = fd;
     b->cur = 0;

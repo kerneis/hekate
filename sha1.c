@@ -39,10 +39,10 @@ void SHA1_stop (struct sha1_ctx *context, unsigned char digest[20]);
 #define F4(x, y, z) (x ^ y ^ z)
 
 #define SHA1STEP(f, data) \
-	{ unsigned long temp; \
-	  temp = e + f (b, c, d) + data + ((a<<5) | (a>>27)); \
-	  e=d;  d=c;  c=((b<<30)&0xffffffffUL)|(b>>2); \
-	  b=a;  a=temp&0xffffffffUL; }
+        { unsigned long temp; \
+          temp = e + f (b, c, d) + data + ((a<<5) | (a>>27)); \
+          e=d;  d=c;  c=((b<<30)&0xffffffffUL)|(b>>2); \
+          b=a;  a=temp&0xffffffffUL; }
 
 void
 SHA1_transform (unsigned long buf[5], const unsigned long in[16])
@@ -108,7 +108,7 @@ SHA1_feed (struct sha1_ctx *ctx, unsigned char inb)
       SHA1_transform (ctx->buf, ctx->in);
       ctx->b = 0;
       for ( i=0 ; i<16 ; i++ )
-	ctx->in[i] = 0;
+        ctx->in[i] = 0;
     }
   temp = ctx->bits[0];
   ctx->bits[0] += 8;

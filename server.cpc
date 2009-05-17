@@ -30,9 +30,9 @@ cpc_read(int fd, void *buf, int length)
     int pos, rc;
 
     for(pos=0; pos<length; pos+=rc){
-	cpc_io_wait(fd, CPC_IO_IN);
-	rc = read(fd, buf+pos, length-pos);
-	if(rc<0 && errno!=EAGAIN) return rc;
+        cpc_io_wait(fd, CPC_IO_IN);
+        rc = read(fd, buf+pos, length-pos);
+        if(rc<0 && errno!=EAGAIN) return rc;
     }
     return length;
 }
@@ -43,9 +43,9 @@ cpc_write(int fd, void *buf, int length)
     int pos, rc;
 
     for(pos=0; pos<length; pos+=rc){
-	cpc_io_wait(fd, CPC_IO_OUT);
-	rc = write(fd, buf+pos, length-pos);
-	if(rc<0 && errno!=EAGAIN) return rc;
+        cpc_io_wait(fd, CPC_IO_OUT);
+        rc = write(fd, buf+pos, length-pos);
+        if(rc<0 && errno!=EAGAIN) return rc;
     }
     return length;
 }
@@ -61,8 +61,8 @@ send_bitfield(int fd, ht_torrent *t)
 
     buf = malloc(length+5);
     if(!buf){
-	perror("(send_bitfield)malloc");
-	return -1;
+        perror("(send_bitfield)malloc");
+        return -1;
     }
 
     /* XXX initialise only num_chunks to 1 */
@@ -74,8 +74,8 @@ send_bitfield(int fd, ht_torrent *t)
     printf("length=%d, type=%d\n", ntohl(((uint32_t *)buf)[0]), buf[4]);
 
     if(cpc_write(fd, buf, length+5)<0){
-	perror("(send_bitfield)cpc_write");
-	return -1;
+        perror("(send_bitfield)cpc_write");
+        return -1;
     }
 
     return 0;
@@ -90,8 +90,8 @@ send_unchoke(int fd)
     buf[4] = 1;
 
     if(cpc_write(fd, buf, 5)<5){
-	perror("(send_unchoke)cpc_write");
-	return -1;
+        perror("(send_unchoke)cpc_write");
+        return -1;
     }
     return 0;
 }
@@ -107,8 +107,8 @@ send_chunk(int fd, piece *chunk)
 
     t = test; /* XXX */
     printf("send chunk: length=%d, offset=%lld\n",
-	   chunk->length,
-	   (long long int)chunk->offset*t->p_length+chunk->begin);
+           chunk->length,
+           (long long int)chunk->offset*t->p_length+chunk->begin);
 
     *((uint32_t *)buf) = htonl(chunk->length+9);
     buf[4] = 7;
@@ -117,33 +117,33 @@ send_chunk(int fd, piece *chunk)
     *((uint32_t *)(buf+9)) = htonl(chunk->begin);
 
     if(cpc_write(fd, buf, 13)<13){
-	perror("(send_unchoke)cpc_write");
-	return -1;
+        perror("(send_unchoke)cpc_write");
+        return -1;
     }
 
     file = open(t->path, O_RDONLY);
     if(file<0){
-	perror("(send_chunk)open");
-	return -1;
+        perror("(send_chunk)open");
+        return -1;
     }
 
     source = mmap(NULL, chunk->length, PROT_READ, MAP_PRIVATE,
-		  file,
-		  chunk->offset*t->p_length+chunk->begin);
+                  file,
+                  chunk->offset*t->p_length+chunk->begin);
     if(source==MAP_FAILED){
-	perror("(send_chunk)mmap source");
-	return -1;
+        perror("(send_chunk)mmap source");
+        return -1;
     }
 
     if(cpc_write(fd, source, chunk->length)<chunk->length){
-	perror("(send_chunk)write");
-	munmap(source, chunk->length);
-	return -1;
+        perror("(send_chunk)write");
+        munmap(source, chunk->length);
+        return -1;
     }
 
     if(munmap(source, chunk->length)){
-	perror("(send_chunk)munmap");
-	return -1;
+        perror("(send_chunk)munmap");
+        return -1;
     }
 
     return 0;
@@ -161,28 +161,28 @@ handshake(hashtable *ht , int fd){
     ht_torrent *torrent;
 
     if(cpc_read(fd, t, 68)<68) {
-	perror("(handshake)cpc_read");
-	return EXIT_FAILURE;
+        perror("(handshake)cpc_read");
+        return EXIT_FAILURE;
     }
 
     if(t[0] != 19){
-	fprintf(stderr,"(handshake)bad protocol %c\n", *t);
-	return EXIT_FAILURE;
+        fprintf(stderr,"(handshake)bad protocol %c\n", *t);
+        return EXIT_FAILURE;
     }
 
     if(memcmp(t+1, protocol, 19)){
-	perror("(handshake)memcmp");
-	return EXIT_FAILURE;
+        perror("(handshake)memcmp");
+        return EXIT_FAILURE;
     }
 
     if(!memcpy(hash, t + 28, 20)){
-	perror("(handshake)memcpy");
-	return EXIT_FAILURE;
+        perror("(handshake)memcpy");
+        return EXIT_FAILURE;
     }
 
     if (!(torrent = ht_get( ht, (unsigned char *)hash ))){
-	fprintf(stderr, "(handshake) : cannot find the hash in the table");
-	return EXIT_FAILURE;
+        fprintf(stderr, "(handshake) : cannot find the hash in the table");
+        return EXIT_FAILURE;
     }
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
@@ -196,31 +196,31 @@ handshake(hashtable *ht , int fd){
     tmp += 19;
 
     tmp[0] = tmp[1] = tmp[2] = tmp[3] =
-	tmp[4] =tmp[5] =tmp[6] =tmp[7] = 0;
+        tmp[4] =tmp[5] =tmp[6] =tmp[7] = 0;
     tmp += 8;
 
     if(!memcpy(tmp , torrent -> info_hash , 20)){
-	perror("(handshake)cannot copy the hash");
-	return EXIT_FAILURE;
+        perror("(handshake)cannot copy the hash");
+        return EXIT_FAILURE;
     }
     tmp += 20;
 
     strncpy(tmp , peer_id , 20 );
     tmp = NULL;
     if(cpc_write(fd , res , 68)<68){
-	perror("(handshake)cannot write to fd");
-	return EXIT_FAILURE;
+        perror("(handshake)cannot write to fd");
+        return EXIT_FAILURE;
     }
 
 
     if(send_bitfield(fd, torrent)<0){
-	fprintf(stderr, "couldn't send bitfield\n");
-	return EXIT_FAILURE;
+        fprintf(stderr, "couldn't send bitfield\n");
+        return EXIT_FAILURE;
     }
 
     if(send_unchoke(fd)<0){
-	fprintf(stderr, "couldn't send unchoke\n");
-	return EXIT_FAILURE;
+        fprintf(stderr, "couldn't send unchoke\n");
+        return EXIT_FAILURE;
     }
 
     /* XXX */ test = torrent;
@@ -236,76 +236,65 @@ stream_read(int fd)
     flist * fl_tmp;
 	
     if(cpc_read(fd, &tmp, 4)<4){
-	perror("(stream_read) didn't read 4 bytes");
-	return -1;
+        perror("(stream_read) didn't read 4 bytes");
+        return -1;
     }
 
     length = ntohl(tmp);
     if(length == 0){
-	//keepalive message
-	return 0;
+        //keepalive message
+        return 0;
     }
     //non-keepalive message
     /* beware of malloc size, should never be >12 except for bitfield */
     res = malloc(length);
     assert(res);
     if(cpc_read(fd, res, length)<0){
-	perror("(stream_read)cpc_read");
-	free(res);
-	return -1;
+        perror("(stream_read)cpc_read");
+        free(res);
+        return -1;
     }
 
     //i am not sure that this is a good idea
     printf("message length: %d, type: %d\n", length, res[0]);
     switch(res[0]) {
     case  7 : case  5 : case 0: case 4:
-	free(res);
-	return 0;
+        free(res);
+        return 0;
     case  1 :
-	//unchoke
-	//no payload
-	printf("unchoke\n");
-	break;
+        //unchoke
+        //no payload
+        printf("unchoke\n");
+        break;
     case  2 :
-	//interested
-	//no payload
-	printf("Win : so let him dl everything he want\n");
-	break;
+        //interested
+        //no payload
+        printf("Win : so let him dl everything he want\n");
+        break;
     case  3 :
-	//not interested
-	// XXX set timer
-	printf("not interested\n");
-	break;
+        //not interested
+        // XXX set timer
+        printf("not interested\n");
+        break;
 
     case  6 ://request
 	printf("request: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int32_t *)(res+1))),
-	       ntohl(*((int32_t *)(res+5))),
-	       ntohl(*((int32_t *)(res+9))));
+	       ntohl(*((int32_t *)(res+1))) ,
+	       ntohl(*((int32_t *)(res+5))) ,
+	       ntohl(*((int32_t *)(res+9))) );
 	/* add request in request list */
-	fl_tmp = send_unchoke[fd];
-	fl_tmp->list = add_piece(fl_tmp->list,
-			      ntohl(*((int64_t *)(res+1))),
-			      ntohl(*((int32_t *)(res+5))),
-			      ntohl(*((int32_t *)(res+9))));
-	fl_tmp -> flag = 1;
 	break;
     case  8 ://cancel
 	printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
-	       ntohl(*((int64_t *)(res+1))) ,
+	       ntohl(*((int32_t *)(res+1))) ,
 	       ntohl(*((int32_t *)(res+5))) ,
 	       ntohl(*((int32_t *)(res+9))) );
-	fl_tmp = send_unchoke[fd];
-	fl_tmp->list = remove_piece(fl_tmp->list,
-				 ntohl(*((int64_t *)(res+1))),
-				 ntohl(*((int32_t *)(res+5))),
-				 ntohl(*((int32_t *)(res+9))));
 	break;
     default :
-	free(res);
-	fprintf(stderr , "(stream_read)Someone sending weird message\n");
-	//not supported by protocol
-	return -1;
+        free(res);
+        fprintf(stderr , "(stream_read)Someone sending weird message\n");
+        //not supported by protocol
+        return -1;
     }
     free(res);
     return 0;
@@ -320,8 +309,8 @@ stream_write(int fd)
     
     /*
       send_chunk(fd, ntohl(*((int32_t *)(res+1))) ,
-		   ntohl(*((int32_t *)(res+5))) ,
-		   ntohl(*((int32_t *)(res+9))) );
+                   ntohl(*((int32_t *)(res+5))) ,
+                   ntohl(*((int32_t *)(res+9))) );
     */
     
     return;
@@ -334,15 +323,15 @@ client(hashtable *t, int client_fd){
 
     rc = handshake(t , client_fd);
     if(rc == EXIT_FAILURE){
-	fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
-	return;
+        fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
+        return;
     }
     
     cpc_spawn stream_write(client_fd);
 
     while(1)
-	if(stream_read(client_fd)<0)
-	    break;
+        if(stream_read(client_fd)<0)
+            break;
     
     close(client_fd);
     return;
@@ -366,34 +355,34 @@ listening(hashtable * table)
     serv_addr.sin_port = htons(SERVER_PORT);
 
     if (bind(socket_fd, (struct sockaddr *) &serv_addr,
-	     sizeof(serv_addr)) < 0)
-	perror("(listening)bind");
+             sizeof(serv_addr)) < 0)
+        perror("(listening)bind");
 
     while(1){
-	rc = listen(socket_fd ,20 );
-	if(rc) perror("(listening)listen");
+        rc = listen(socket_fd ,20 );
+        if(rc) perror("(listening)listen");
 
-	while(1){
-	    cli_len = sizeof(cli_addr);
+        while(1){
+            cli_len = sizeof(cli_addr);
 
-	    cpc_io_wait(socket_fd, CPC_IO_IN);
-	    client_fd = accept(socket_fd ,
-			       (struct sockaddr *) &cli_addr ,
-			       &cli_len );
+            cpc_io_wait(socket_fd, CPC_IO_IN);
+            client_fd = accept(socket_fd ,
+                               (struct sockaddr *) &cli_addr ,
+                               &cli_len );
         fprintf(stderr,"Got a connection!\n");
-	    if(client_fd<0 && errno!=EAGAIN && errno!=EWOULDBLOCK)
-		{ perror("(listening)accept"); return; }
+            if(client_fd<0 && errno!=EAGAIN && errno!=EWOULDBLOCK)
+                { perror("(listening)accept"); return; }
 
-	    flags = fcntl(client_fd, F_GETFL);
-	    rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
-	    if(flags<0 || rc<0){
-		perror("(listening)fcntl");
-		close(client_fd);
-		continue;
-	    }
+            flags = fcntl(client_fd, F_GETFL);
+            rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
+            if(flags<0 || rc<0){
+                perror("(listening)fcntl");
+                close(client_fd);
+                continue;
+            }
 
-	    cpc_spawn client(table , client_fd);
-	}
+            cpc_spawn client(table , client_fd);
+        }
     }
 
     return;
