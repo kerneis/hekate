@@ -25,7 +25,7 @@ ht_torrent *test;
 flist* sended_chunk[1024];
 
 cps int
-cpc_read(int fd, void *buf, int length)
+cpc_full_read(int fd, void *buf, int length)
 {
     int pos, rc;
 
@@ -38,7 +38,7 @@ cpc_read(int fd, void *buf, int length)
 }
 
 cps int
-cpc_write(int fd, void *buf, int length)
+cpc_full_write(int fd, void *buf, int length)
 {
     int pos, rc;
 
@@ -73,8 +73,8 @@ send_bitfield(int fd, ht_torrent *t)
 
     printf("length=%d, type=%d\n", ntohl(((uint32_t *)buf)[0]), buf[4]);
 
-    if(cpc_write(fd, buf, length+5)<0){
-        perror("(send_bitfield)cpc_write");
+    if(cpc_full_write(fd, buf, length+5)<0){
+        perror("(send_bitfield)cpc_full_write");
         return -1;
     }
 
@@ -89,8 +89,8 @@ send_unchoke(int fd)
     ((uint32_t *)buf)[0] = htonl(1);
     buf[4] = 1;
 
-    if(cpc_write(fd, buf, 5)<5){
-        perror("(send_unchoke)cpc_write");
+    if(cpc_full_write(fd, buf, 5)<5){
+        perror("(send_unchoke)cpc_full_write");
         return -1;
     }
     return 0;
@@ -116,8 +116,8 @@ send_chunk(int fd, piece *chunk)
     *((uint32_t *)(buf+5)) = htonl(chunk->offset);
     *((uint32_t *)(buf+9)) = htonl(chunk->begin);
 
-    if(cpc_write(fd, buf, 13)<13){
-        perror("(send_unchoke)cpc_write");
+    if(cpc_full_write(fd, buf, 13)<13){
+        perror("(send_unchoke)cpc_full_write");
         return -1;
     }
 
@@ -135,7 +135,7 @@ send_chunk(int fd, piece *chunk)
         return -1;
     }
 
-    if(cpc_write(fd, source, chunk->length)<chunk->length){
+    if(cpc_full_write(fd, source, chunk->length)<chunk->length){
         perror("(send_chunk)write");
         munmap(source, chunk->length);
         return -1;
@@ -160,8 +160,8 @@ handshake(hashtable *ht , int fd){
     char *res , *tmp , t[68];
     ht_torrent *torrent;
 
-    if(cpc_read(fd, t, 68)<68) {
-        perror("(handshake)cpc_read");
+    if(cpc_full_read(fd, t, 68)<68) {
+        perror("(handshake)cpc_full_read");
         return EXIT_FAILURE;
     }
 
@@ -207,7 +207,7 @@ handshake(hashtable *ht , int fd){
 
     strncpy(tmp , peer_id , 20 );
     tmp = NULL;
-    if(cpc_write(fd , res , 68)<68){
+    if(cpc_full_write(fd , res , 68)<68){
         perror("(handshake)cannot write to fd");
         return EXIT_FAILURE;
     }
@@ -235,7 +235,7 @@ stream_read(int fd)
     char * res;
     flist * fl_tmp;
 	
-    if(cpc_read(fd, &tmp, 4)<4){
+    if(cpc_full_read(fd, &tmp, 4)<4){
         perror("(stream_read) didn't read 4 bytes");
         return -1;
     }
@@ -249,8 +249,8 @@ stream_read(int fd)
     /* beware of malloc size, should never be >12 except for bitfield */
     res = malloc(length);
     assert(res);
-    if(cpc_read(fd, res, length)<0){
-        perror("(stream_read)cpc_read");
+    if(cpc_full_read(fd, res, length)<0){
+        perror("(stream_read)cpc_full_read");
         free(res);
         return -1;
     }
