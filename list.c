@@ -19,12 +19,15 @@ tr_insert(ht_torrent *t, char *url)
     }
     to_elmt->elmt = t;
 
-    for(tmp=trackers; tmp; tmp=tmp->next){
-	if(strcmp(tmp->url, url)==0){
-	    free(url);
-	    to_elmt->next = tmp->head;
-	    tmp->head = to_elmt;
-	    return;
+    i = trackers;
+    if(trackers){
+	while(!i->next){
+	    if(!strcmp(t->tracker, ((ht_torrent *)((list *)(i->elmt))->elmt)->tracker)){
+		e->next = ((list *)(i->elmt))->elmt;
+		i->elmt = e;
+		return i;
+	    }
+	    i = i->next;
 	}
     }
 
@@ -37,36 +40,31 @@ tr_insert(ht_torrent *t, char *url)
     tmp->head = to_elmt;
     tmp->next = trackers;
     trackers = tmp;
+
+    return tmp;
 }
 
-pieces_list*
-add_piece(pieces_list * l, int64_t offset, int begin, int length){
-    pieces_list * tmp = l;
-    piece * p;
-
-    p = malloc(sizeof(piece*));
-    p -> offset = offset;
-    p -> begin  = begin;
-    p -> length = length;
-
+list*
+add(list * l ,void * elmt){
+    list * tmp = l;
+    
     while( tmp && tmp->next )
 	tmp = tmp -> next;
-
+    
     if(!tmp){
-	tmp = malloc(sizeof(pieces_list));
-	tmp -> elmt = p;
+	tmp = malloc(sizeof(list));
+	tmp -> elmt = elmt;
 	tmp -> next = NULL;
 	return tmp;
     }
-
+    
     else{
-	/*tmp -> next == NULL*/
-	tmp -> next = malloc(sizeof(pieces_list));
-	tmp -> next -> elmt = p;
+	//tmp -> next == NULL
+	tmp -> next = malloc(sizeof(list));
+	tmp -> next -> elmt = elmt;
 	tmp -> next -> next = NULL;
 	return l;
     }
-
     return l;
 }
 

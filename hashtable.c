@@ -74,21 +74,21 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
     for(i=0; i<raw->set.used; i+=2) {
 
         if((raw->set.l[i])->type != STRING) {
-	    return -2;
+            return -2;
         }
 
-	switch(c){
-	case 0:
-	    if(strcmp((raw->set.l[i])->s, "length")==0 &&
-	       (raw->set.l[i+1])->type == INT ) {
-		elmt->f_length = (raw->set.l[i+1])->i;
-		c++;
-	    }
-	    if(strcmp((raw->set.l[i])->s, "files")==0){
-		return -2; /* TODO: multiple files case */
-		c++;
-	    }
-	    break;
+        switch(c){
+        case 0:
+            if(strcmp((raw->set.l[i])->s, "length")==0 &&
+               (raw->set.l[i+1])->type == INT ) {
+                elmt->f_length = (raw->set.l[i+1])->i;
+                c++;
+            }
+            if(strcmp((raw->set.l[i])->s, "files")==0){
+                return -2; /* TODO: multiple files case */
+                c++;
+            }
+            break;
 
 	case 1:
 	    if(strcmp((raw->set.l[i])->s, "name")==0 &&
@@ -98,32 +98,32 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 		    perror("(ht_info_load)malloc");
 		    return -1;
 		}
-		snprintf(path, path_length, "%s/%s",
+		snprintf(curr_path, path_length, "%s/%s",
 			 curr_path, (raw->set.l[i+1])->s);
 		elmt->path = curr_path;
 		c++;
 	    }
 	    break;
 
-	case 2:
-	    if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
-	       (raw->set.l[i+1])->type == INT) {
-		elmt->p_length = (raw->set.l[i+1])->i;
-		c++;
-	    }
-	    break;
+        case 2:
+            if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
+               (raw->set.l[i+1])->type == INT) {
+                elmt->p_length = (raw->set.l[i+1])->i;
+                c++;
+            }
+            break;
 
-	case 3:
-	    /* TODO: multiple files case */
-	    if(strcmp((raw->set.l[i])->s, "pieces")==0 &&
-	       (raw->set.l[i+1])->type == STRING ) {
-		c++;
-	    }
-	    break;
+        case 3:
+            /* TODO: multiple files case */
+            if(strcmp((raw->set.l[i])->s, "pieces")==0 &&
+               (raw->set.l[i+1])->type == STRING ) {
+                c++;
+            }
+            break;
 
-	default:
-	    return 0;
-	}
+        default:
+            return 0;
+        }
     }
     return 0;
 }
@@ -137,7 +137,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 
     if(!(elmt = malloc(sizeof(ht_torrent)))) {
         perror("ht_load");
-	free_benc(raw);
+        free_benc(raw);
         return -1;
     }
     if(raw->type != DICT) {
@@ -156,33 +156,33 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 	case 0:
 	    if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
 	       (raw->set.l[i+1])->type == STRING ) {
-		url = (raw->set.l[i+1])->s;
+		elmt->tracker = (raw->set.l[i+1])->s;
 		raw->set.l[i+1]->s = NULL;
 		c++;
 	    }
 	    break;
 
-	case 1:
-	    if(strcmp((raw->set.l[i])->s, "info") == 0&&
-	       (raw->set.l[i+1])->type == DICT ) {
-		if((rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]))<0){
-		    free_benc(raw);
-		    return rc;
-		}
-		c++;
-	    }
-	    break;
+        case 1:
+            if(strcmp((raw->set.l[i])->s, "info") == 0&&
+               (raw->set.l[i+1])->type == DICT ) {
+                if((rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]))<0){
+                    free_benc(raw);
+                    return rc;
+                }
+                c++;
+            }
+            break;
 
-	default:
-	    i = raw->set.used; /* leave loop */
-	}
+        default:
+            i = raw->set.used; /* leave loop */
+        }
     }
 
     /* was the .torrent complete? */
     if(!url || !(elmt->path) ||
        !(elmt->f_length) || !(elmt->p_length)) {
         free_benc(raw);
-	return -2;
+        return -2;
     }
 
     /* insert in hashtable */
@@ -191,7 +191,10 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
         return -1;
     }
     /* insert in trackers list */
-    tr_insert(elmt, url);
+    if(!linsert_tracker(elmt)) {
+	perror("linsert");
+	return -1;
+    }
 
     free_benc(raw);
     return 0;
