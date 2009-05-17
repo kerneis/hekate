@@ -98,7 +98,7 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 		    perror("(ht_info_load)malloc");
 		    return -1;
 		}
-		snprintf(curr_path, path_length, "%s/%s",
+		snprintf(path, path_length, "%s/%s",
 			 curr_path, (raw->set.l[i+1])->s);
 		elmt->path = curr_path;
 		c++;
