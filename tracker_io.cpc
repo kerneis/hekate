@@ -20,6 +20,11 @@ generate_get(char *url, ht_torrent * t, CURL *e_handler)
     char *res , *hash;
 
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
+    if(!hash){
+	fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
+	/*XXX is this a real good idea to return a NULL?!*/
+	return NULL;
+    }
     
     length =
         strlen(url)         /* url */

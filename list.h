@@ -40,4 +40,7 @@ typedef struct tr_list{
 } tr_list;
 
 void tr_insert(ht_torrent * t, char *url);
+pieces_list* add_piece(pieces_list * l, int64_t offset, int begin, int length);
+pieces_list* remove_piece(pieces_list *pl, int offset, int begin, int length);
+
 #endif

@@ -39,15 +39,14 @@ typedef struct ht_torrent{
 } ht_torrent;
 
 
-typedef struct chunk{
+typedef struct piece{
     /* TO-DO: add a file field for multi-files torrents */
-
     /* offset associated with a chunk in a file */
     int64_t offset;
     int begin;
     int length;
 
-}chunk;
+}piece;
 
 int ht_load(hashtable * table, char *curr_path, benc *raw);
 int ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw);
