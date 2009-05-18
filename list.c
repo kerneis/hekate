@@ -13,7 +13,8 @@ tr_insert(ht_torrent *t, char *url)
     tr_list *tmp;
     to_list *to_elmt;
 
-    if(!(to_elmt=malloc(sizeof(to_list)))){
+    to_elmt = malloc(sizeof(to_list));
+    if(!to_elmt) {
 	perror("(tr_insert)Unable to add torrent in list.");
 	return;
     }
@@ -28,7 +29,8 @@ tr_insert(ht_torrent *t, char *url)
 	}
     }
 
-    if(!(tmp=malloc(sizeof(tr_list)))){
+    tmp = malloc(sizeof(tr_list));
+    if(!tmp) {
 	perror("(tr_insert)Unable to create trackers list.");
 	exit(EXIT_FAILURE);
     }
