@@ -22,7 +22,7 @@ ht_create(int size)
     if(!ht) return NULL;
 
     ht->size = size;
-    ht->table = calloc(size, sizeof(ht_element *));
+    ht->table = calloc(size, sizeof(ht_torrent *));
     if(!ht->table) return NULL;
 
     return ht;
@@ -30,20 +30,18 @@ ht_create(int size)
 
 
 unsigned char *
-ht_insert(hashtable *ht, unsigned char *key, void *value)
+ht_insert(hashtable *ht, ht_torrent *hte)
 {
-    uint32_t h = hash(key, ht->size);
-    ht_element * hte = malloc(sizeof(ht_element));
-    if(!hte) return NULL;
+    /* unsigned char *key, void *value) */
+    uint32_t h = hash(hte->key, ht->size);
 
-    memcpy(hte->key, key, 20);
     if(ht->table[h])
       hte->next = ht->table[h];
     else
       hte->next = NULL;
-    hte->content = value;
 
     ht->table[h] = hte;
+
     return hte->key;
 }
 
@@ -52,10 +50,10 @@ void*
 ht_get(hashtable *ht, unsigned char *key)
 {
     uint32_t h = hash(key, ht->size);
-    ht_element *hte = ht->table[h];
+    ht_torrent *hte = ht->table[h];
     while(hte) {
         if(!memcmp(key, hte->key, 20))
-            return hte->content;
+            return hte;
         hte = hte->next;
     }
     return NULL;
@@ -141,6 +139,8 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
         free_benc(raw);
         return -1;
     }
+    elmt->map = NULL;
+
     if(raw->type != DICT) {
         free_benc(raw);
         return -2;
@@ -188,7 +188,9 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
     }
 
     /* insert in hashtable */
-    if(!(elmt->info_hash=ht_insert(table, raw->hash, elmt))) {
+    memcpy(elmt->key, raw->hash, 20);
+
+    if(!(elmt->info_hash=ht_insert(table, elmt))) {
         perror("ht_insert");
         return -1;
     }
