@@ -227,7 +227,7 @@ stream_writer(int fd)
 {
     //while request list non empty, send chunks
     piece *pl;
-    
+
     while((pl = sended_pieces[fd].list)) {
         sended_pieces[fd].list = sended_pieces[fd].list->next;
         send_chunk(fd, pl);
@@ -243,7 +243,7 @@ stream_reader(int fd)
 {
     uint32_t tmp = 0, length = 0;
     char * res = NULL;
-	
+
     if(cpc_full_read(fd, &tmp, 4)<4){
         perror("(stream_read) didn't read 4 bytes");
         return -1;
