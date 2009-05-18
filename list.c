@@ -41,25 +41,15 @@ tr_insert(ht_torrent *t, char *url)
     trackers = tmp;
 }
 
-pieces_list*
-add_piece(pieces_list * l, int64_t offset, int begin, int length){
-    pieces_list * tmp = l;
-    piece * p;
+piece*
+add_piece(piece *l, int64_t offset, int begin, int length)
+{
+    piece *p =  malloc(sizeof(piece));
 
-    p = malloc(sizeof(piece*));
-    p -> offset = offset;
-    p -> begin  = begin;
-    p -> length = length;
-
-    while( tmp && tmp->next )
-        tmp = tmp -> next;
-
-    if(!tmp){
-        tmp = malloc(sizeof(pieces_list));
-        tmp -> elmt = p;
-        tmp -> next = NULL;
-        return tmp;
-    }
+    p->offset = offset;
+    p->begin  = begin;
+    p->length = length;
+    p->next = l;
 
     else{
         /*tmp -> next == NULL*/
@@ -68,13 +58,13 @@ add_piece(pieces_list * l, int64_t offset, int begin, int length){
         tmp -> next -> next = NULL;
         return l;
     }
-
     return l;
 }
 
-pieces_list*
-remove_piece(pieces_list *pl, int offset, int begin, int length){
-    pieces_list *prec = NULL, *tmp = pl;
+piece*
+remove_piece(piece *l, int offset, int begin, int length)
+{
+    /*    piece *prec = NULL, *tmp = pl;
     piece * p;
     if(!pl)
 	return NULL;
@@ -93,6 +83,7 @@ remove_piece(pieces_list *pl, int offset, int begin, int length){
         }
         prec = tmp;
         tmp = tmp -> next;
-    }
-    return pl;
+        }
+        return pl;*/
+    return NULL;
 }

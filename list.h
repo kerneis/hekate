@@ -9,17 +9,23 @@ typedef struct to_list{
     struct to_list *next;
 } to_list;
 
-typedef struct pieces_list pieces_list;
+typedef struct tr_list{
+    char *url;
+    to_list *head;
+    struct tr_list *next;
+} tr_list;
 
-struct pieces_list{
-    piece *elmt;
-    pieces_list * next;
-};
+typedef struct piece{
+    /* TO-DO: add a file field for multi-files torrents */
+    /* offset associated with a chunk in a file */
+    int64_t offset;
+    int begin;
+    int length;
 
+    struct piece *next;
+} piece;
 
-typedef struct flist flist;
-
-struct flist{
+typedef struct flist{
     /**
        flag == 0 :
          nothing to do write must die
@@ -30,17 +36,12 @@ struct flist{
 	  Is this realy needed?
      */
     int flag;
-    pieces_list * list;
-};
+    piece *list;
+} flist;
 
-typedef struct tr_list{
-    char *url;
-    to_list *head;
-    struct tr_list *next;
-} tr_list;
 
 void tr_insert(ht_torrent * t, char *url);
-pieces_list* add_piece(pieces_list * l, int64_t offset, int begin, int length);
-pieces_list* remove_piece(pieces_list *pl, int offset, int begin, int length);
+piece* add_piece(piece *l, int64_t offset, int begin, int length);
+piece* remove_piece(piece *l, int offset, int begin, int length);
 
 #endif

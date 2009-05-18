@@ -22,7 +22,7 @@
 
 ht_torrent *test;
 /*XXX 1024 -> FD_MAX*/
-flist sended_pieces[1024];
+flist* sended_pieces[1024];
 
 cps int
 cpc_full_read(int fd, void *buf, int length)
@@ -119,14 +119,13 @@ send_chunk(int fd, piece *chunk)
     }
 
     file = open(t->path, O_RDONLY);
-    if(file<0){
+    if(file < 0){
         perror("(send_chunk)open");
         return -1;
     }
 
     source = mmap(NULL, chunk->length, PROT_READ, MAP_PRIVATE,
-                  file,
-                  chunk->offset*t->p_length+chunk->begin);
+                  file, chunk->offset*t->p_length+chunk->begin);
     if(source==MAP_FAILED){
         perror("(send_chunk)mmap source");
         return -1;
@@ -230,19 +229,15 @@ stream_writer(int fd)
 {
     /* XXX rewrite */
     //while request list non empty, send chunks
-    flist * fl_tmp = NULL;
-    pieces_list * pl = NULL;
+    piece *pl;
     
-    fl_tmp = sended_pieces[fd];
-    
-    while(!(pl = fl_tmp -> list)){
-        fl_tmp->list = fl_tmp->list->next;
-        send_chunk(fd, pl->elmt);
-        free(pl->elmt);
+    while((pl = sended_pieces[fd].list)) {
+        sended_pieces[fd].list = sended_pieces[fd].list->next;
+        send_chunk(fd, pl);
         free(pl);
         cpc_yield;
     }
-    fl_tmp->flag = 0;
+    sended_pieces[fd].flag = 0;
     return;
 }
 
@@ -251,7 +246,6 @@ stream_reader(int fd)
 {
     uint32_t tmp = 0, length = 0;
     char * res = NULL;
-    flist * fl_tmp = NULL;
 	
     if(cpc_full_read(fd, &tmp, 4)<4){
         perror("(stream_read) didn't read 4 bytes");
@@ -304,12 +298,12 @@ stream_reader(int fd)
                ntohl(*((int32_t *)(res+9))));
         /* add request in request list */
         /* XXX fl_tmp = send_unchoke[fd]; */
-        fl_tmp->list = add_piece(fl_tmp->list,
-                                 ntohl(*((int64_t *)(res+1))),
-                                 ntohl(*((int32_t *)(res+5))),
-                                 ntohl(*((int32_t *)(res+9))));
-        if(!(fl_tmp->flag)){
-            fl_tmp -> flag = 1;
+        sended_pieces[fd].list = add_piece(sended_pieces[fd].list,
+                                           ntohl(*((int64_t *)(res+1))),
+                                           ntohl(*((int32_t *)(res+5))),
+                                           ntohl(*((int32_t *)(res+9))));
+        if(sended_pieces[fd].flag == 0) {
+            sended_pieces[fd].flag = 1;
             cpc_spawn stream_writer(fd);
         }
         break;
@@ -321,10 +315,10 @@ stream_reader(int fd)
                ntohl(*((int32_t *)(res+9))));
 
         /* XXX fl_tmp = send_unchoke[fd]; */
-        fl_tmp->list = remove_piece(fl_tmp->list,
-                                    ntohl(*((int64_t *)(res+1))),
-                                    ntohl(*((int32_t *)(res+5))),
-                                    ntohl(*((int32_t *)(res+9))));
+        sended_pieces[fd].list = remove_piece(sended_pieces[fd].list,
+                                              ntohl(*((int64_t *)(res+1))),
+                                              ntohl(*((int32_t *)(res+5))),
+                                              ntohl(*((int32_t *)(res+9))));
         break;
 
     default :
@@ -376,6 +370,8 @@ listening(hashtable * table)
     if (bind(socket_fd, (struct sockaddr *) &serv_addr,
              sizeof(serv_addr)) < 0)
         perror("(listening)bind");
+
+    memset(sended_pieces, 1024*sizeof(piece), 0);
 
     while(1){
         rc = listen(socket_fd, 20);
