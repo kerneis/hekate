@@ -156,9 +156,9 @@ parse_int(buffer *b, char c, char end)
     }
     while(c != end) {
         if(!isdigit(c)){
-	    fprintf(stderr, "(parse_int)bad written torrent\n");
+            fprintf(stderr, "(parse_int)bad written torrent\n");
             exit(EXIT_FAILURE); /* XXX fail more gracefully? this includes eof */
-	}
+        }
         r = r * 10LL + ((int64_t)(c - '0'));
         c = get_byte(b);
     }

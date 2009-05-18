@@ -22,14 +22,14 @@
 
 ht_torrent *test;
 /*XXX 1024 -> FD_MAX*/
-flist* sended_pieces[1024];
+flist sended_pieces[1024];
 
 cps int
 cpc_full_read(int fd, void *buf, int length)
 {
     int pos, rc;
 
-    for(pos=0; pos<length; pos+=rc){
+    for(pos = 0; pos < length; pos += rc){
         cpc_io_wait(fd, CPC_IO_IN);
         rc = read(fd, buf+pos, length-pos);
         if(rc<0 && errno!=EAGAIN) return rc;
@@ -189,22 +189,22 @@ handshake(hashtable *ht , int fd){
     tmp[0] = 19;
     tmp ++;
 
-    strncpy(tmp , "BitTorrent protocol" , 19);
+    strncpy(tmp, "BitTorrent protocol", 19);
     tmp += 19;
 
     tmp[0] = tmp[1] = tmp[2] = tmp[3] =
         tmp[4] =tmp[5] =tmp[6] =tmp[7] = 0;
     tmp += 8;
 
-    if(!memcpy(tmp , torrent -> info_hash , 20)){
+    if(!memcpy(tmp, torrent->info_hash, 20)){
         perror("(handshake)cannot copy the hash");
         return EXIT_FAILURE;
     }
     tmp += 20;
 
-    strncpy(tmp , peer_id , 20 );
+    strncpy(tmp, peer_id, 20 );
     tmp = NULL;
-    if(cpc_full_write(fd , res , 68)<68){
+    if(cpc_full_write(fd, res, 68) < 68) {
         perror("(handshake)cannot write to fd");
         return EXIT_FAILURE;
     }
@@ -299,9 +299,9 @@ stream_reader(int fd)
 
     case  6 ://request
         printf("request: index = %d \tbegin = %d\tlength = %d\n",
-               ntohl(*((int32_t *)(res+1))) ,
-               ntohl(*((int32_t *)(res+5))) ,
-               ntohl(*((int32_t *)(res+9))) );
+               ntohl(*((int32_t *)(res+1))),
+               ntohl(*((int32_t *)(res+5))),
+               ntohl(*((int32_t *)(res+9))));
         /* add request in request list */
         /* XXX fl_tmp = send_unchoke[fd]; */
         fl_tmp->list = add_piece(fl_tmp->list,
@@ -316,9 +316,9 @@ stream_reader(int fd)
 
     case  8 ://cancel
         printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
-               ntohl(*((int32_t *)(res+1))) ,
-               ntohl(*((int32_t *)(res+5))) ,
-               ntohl(*((int32_t *)(res+9))) );
+               ntohl(*((int32_t *)(res+1))),
+               ntohl(*((int32_t *)(res+5))),
+               ntohl(*((int32_t *)(res+9))));
 
         /* XXX fl_tmp = send_unchoke[fd]; */
         fl_tmp->list = remove_piece(fl_tmp->list,
@@ -342,7 +342,7 @@ client(hashtable *t, int client_fd){
     int rc = 0;
     unsigned char buffer[BUF_LEGNTH];
 
-    rc = handshake(t , client_fd);
+    rc = handshake(t, client_fd);
     if(rc == EXIT_FAILURE){
         fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
         return;
@@ -359,7 +359,7 @@ client(hashtable *t, int client_fd){
 cps void
 listening(hashtable * table)
 {
-    int socket_fd ,client_fd;
+    int socket_fd, client_fd;
     int rc, flags, one = 1;
     socklen_t cli_len;
     struct sockaddr_in serv_addr, cli_addr;
@@ -378,16 +378,16 @@ listening(hashtable * table)
         perror("(listening)bind");
 
     while(1){
-        rc = listen(socket_fd ,20 );
+        rc = listen(socket_fd, 20);
         if(rc) perror("(listening)listen");
 
         while(1){
             cli_len = sizeof(cli_addr);
 
             cpc_io_wait(socket_fd, CPC_IO_IN);
-            client_fd = accept(socket_fd ,
-                               (struct sockaddr *) &cli_addr ,
-                               &cli_len );
+            client_fd = accept(socket_fd,
+                               (struct sockaddr *) &cli_addr,
+                               &cli_len);
         fprintf(stderr,"Got a connection!\n");
             if(client_fd<0 && errno!=EAGAIN && errno!=EWOULDBLOCK)
                 { perror("(listening)accept"); return; }
@@ -400,7 +400,7 @@ listening(hashtable * table)
                 continue;
             }
 
-            cpc_spawn client(table , client_fd);
+            cpc_spawn client(table, client_fd);
         }
     }
 

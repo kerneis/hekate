@@ -31,15 +31,19 @@ upload(hashtable *table, char * path)
     struct dirent *entry;
     struct stat st;
 
-    if((dir = opendir(path)) == NULL)
-        { perror("(upload)cannot open directory\n"); return; }
+    if((dir = opendir(path)) == NULL){
+        perror("(upload)cannot open directory\n");
+        return;
+    }
 
     while((entry = readdir(dir))){
         length = strlen(path)+strlen(entry->d_name)+2;
         curr_path = malloc(length);
         snprintf(curr_path, length, "%s/%s", path, entry->d_name);
-        if(!curr_path)
-            { perror("(upload)sprintf"); return; }
+        if(!curr_path){
+            perror("(upload)sprintf");
+            return;
+        }
 
         if(strcmp(entry->d_name,".")==0 ||
            strcmp(entry->d_name,"..")==0)
