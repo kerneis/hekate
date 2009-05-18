@@ -83,8 +83,19 @@ ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
                 c++;
             }
             if(strcmp((raw->set.l[i])->s, "files") == 0) {
-                return -2; /* TODO: multiple files case */
-                c++;
+                benc *dict = raw->set.l[i+1]->set.l[0];
+                elmt->f_length = dict->set.l[1]->i;
+                char *s = dict->set.l[3]->set.l[0]->s;
+                path_length = strlen(s) + strlen(curr_path) + 2;
+                path = malloc(path_length);
+                if(!path) {
+                    perror("(ht_info_load)malloc");
+                    return -1;
+                }
+                snprintf(path, path_length, "%s/%s",
+                         curr_path, s);
+                elmt->path = path;
+                c=2;
             }
             break;
         case 1:
