@@ -21,7 +21,7 @@
 #define DIR_LEN 512
 
 /*XXX 1024 -> FD_MAX*/
-flist sended_pieces[1024];
+flist requests[1024];
 
 cps int
 cpc_full_read(int fd, void *buf, int length)
@@ -99,7 +99,7 @@ send_chunk(int fd, piece *chunk)
     int file;
     unsigned char buf[13];
     void *source;
-    ht_torrent *t = sended_pieces[fd].t;
+    ht_torrent *t = requests[fd].t;
 
     printf("send chunk: length=%d, offset=%lld\n",
            chunk->length,
@@ -180,7 +180,7 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    sended_pieces[fd].t = torrent;
+    requests[fd].t = torrent;
 
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
@@ -229,13 +229,13 @@ stream_writer(int fd)
     //while request list non empty, send chunks
     piece *pl;
 
-    while((pl = sended_pieces[fd].list)) {
-        sended_pieces[fd].list = sended_pieces[fd].list->next;
+    while((pl = requests[fd].list)) {
+        requests[fd].list = requests[fd].list->next;
         send_chunk(fd, pl);
         free(pl);
         cpc_yield;
     }
-    sended_pieces[fd].flag = 0;
+    requests[fd].flag = 0;
     return;
 }
 
@@ -285,20 +285,20 @@ stream_reader(int fd)
 
     case  3 :
         //not interested
-        // XXX set timer
         printf("not interested\n");
-        break;
+        return -1; /* XXX */
 
     case  6 ://request
         printf("request: index = %d \tbegin = %d\tlength = %d\n",
-               ntohl(*((int32_t *)(res + 1))),
-               ntohl(*((int32_t *)(res + 5))),
-               ntohl(*((int32_t *)(res + 9))));
+               ntohl(*((int32_t *)(res+1))),
+               ntohl(*((int32_t *)(res+5))),
+               ntohl(*((int32_t *)(res+9))));
         /* add request in request list */
+        /* XXX fl_tmp = send_unchoke[fd]; */
         sended_pieces[fd].list = add_piece(sended_pieces[fd].list,
-                                           ntohl(*((int64_t *)(res + 1))),
-                                           ntohl(*((int32_t *)(res + 5))),
-                                           ntohl(*((int32_t *)(res + 9))));
+                                           ntohl(*((int64_t *)(res+1))),
+                                           ntohl(*((int32_t *)(res+5))),
+                                           ntohl(*((int32_t *)(res+9))));
         if(sended_pieces[fd].flag == 0) {
             sended_pieces[fd].flag = 1;
             cpc_spawn stream_writer(fd);
@@ -313,9 +313,9 @@ stream_reader(int fd)
 
         /* XXX fl_tmp = send_unchoke[fd]; */
         sended_pieces[fd].list = remove_piece(sended_pieces[fd].list,
-                                              ntohl(*((int64_t *)(res + 1))),
-                                              ntohl(*((int32_t *)(res + 5))),
-                                              ntohl(*((int32_t *)(res + 9))));
+                                              ntohl(*((int64_t *)(res+1))),
+                                              ntohl(*((int32_t *)(res+5))),
+                                              ntohl(*((int32_t *)(res+9))));
         break;
 
     default :
@@ -375,7 +375,7 @@ listening(hashtable * table)
              sizeof(serv_addr)) < 0)
         perror("(listening)bind");
 
-    memset(sended_pieces, 1024*sizeof(piece), 0);
+    memset(requests, 1024*sizeof(piece), 0);
 
     while(1) {
         rc = listen(socket_fd, 20);
