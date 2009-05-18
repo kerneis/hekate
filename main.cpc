@@ -76,7 +76,6 @@ upload(hashtable *table, char * path)
                     continue;
                 }
                 elmt = ht_get(table, tmp);
-                printf("tracker address: %s\n", elmt->tracker);
                 printf("path: %s\n", elmt->path);
                 printf("file length: %lld\n", (long long int)elmt->f_length);
                 printf("chunk size: %lld\n", (long long int)elmt->p_length);

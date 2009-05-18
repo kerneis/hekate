@@ -39,26 +39,32 @@ tr_insert(ht_torrent *t, char *url)
     trackers = tmp;
 }
 
-list*
-add(list * l ,void * elmt){
-    list * tmp = l;
-    
+pieces_list*
+add_piece(pieces_list * l, int64_t offset, int begin, int length){
+    pieces_list * tmp = l;
+    piece * p;
+
+    p = malloc(sizeof(piece*));
+    p -> offset = offset;
+    p -> begin  = begin;
+    p -> length = length;
+
     while( tmp && tmp->next )
-	tmp = tmp -> next;
-    
+        tmp = tmp -> next;
+
     if(!tmp){
-	tmp = malloc(sizeof(list));
-	tmp -> elmt = elmt;
-	tmp -> next = NULL;
-	return tmp;
+        tmp = malloc(sizeof(pieces_list));
+        tmp -> elmt = p;
+        tmp -> next = NULL;
+        return tmp;
     }
-    
+
     else{
-	//tmp -> next == NULL
-	tmp -> next = malloc(sizeof(list));
-	tmp -> next -> elmt = elmt;
-	tmp -> next -> next = NULL;
-	return l;
+        /*tmp -> next == NULL*/
+        tmp -> next = malloc(sizeof(pieces_list));
+        tmp -> next -> elmt = p;
+        tmp -> next -> next = NULL;
+        return l;
     }
     return l;
 }

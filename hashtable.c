@@ -154,7 +154,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
         case 0:
             if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
                (raw->set.l[i+1])->type == STRING ) {
-                elmt->tracker = (raw->set.l[i+1])->s;
+                url = (raw->set.l[i+1])->s;
                 raw->set.l[i+1]->s = NULL;
                 c++;
             }
@@ -188,10 +188,8 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
         return -1;
     }
     /* insert in trackers list */
-    if(!linsert_tracker(elmt)) {
-        perror("linsert");
-        return -1;
-    }
+    tr_insert(elmt, url);
+
     free_benc(raw);
     return 0;
 }
