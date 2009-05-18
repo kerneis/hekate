@@ -94,7 +94,7 @@ send_unchoke(int fd)
 }
 
 cps int
-send_chunk(int fd, piece *chunk)
+send_piece(int fd, piece *chunk)
 {
     int file;
     unsigned char buf[13];
@@ -116,27 +116,26 @@ send_chunk(int fd, piece *chunk)
         return -1;
     }
 
-    file = open(t->path, O_RDONLY);
-    if(file < 0) {
-        perror("(send_chunk)open");
-        return -1;
+    if(!requests[fd].t->map) {
+        file = open(t->path, O_RDONLY);
+        if(file < 0){
+            perror("(send_piece)open");
+            return -1;
+        }
+
+        requests[fd].t->map = mmap(NULL, t->f_length, PROT_READ,
+                                   MAP_PRIVATE, file, 0);
+        if(requests[fd].t->map == MAP_FAILED) {
+            perror("(send_piece)mmap source");
+            return -1;
+        }
     }
 
-    source = mmap(NULL, chunk->length, PROT_READ, MAP_PRIVATE,
-                  file, chunk->offset * t->p_length + chunk->begin);
-    if(source == MAP_FAILED) {
-        perror("(send_chunk)mmap source");
-        return -1;
-    }
+    source = requests[fd].t->map;
+    source += chunk->offset*t->p_length+chunk->begin;
 
-    if(cpc_full_write(fd, source, chunk->length) < chunk->length) {
-        perror("(send_chunk)write");
-        munmap(source, chunk->length);
-        return -1;
-    }
-
-    if(munmap(source, chunk->length)) {
-        perror("(send_chunk)munmap");
+    if(cpc_full_write(fd, source, chunk->length)<chunk->length){
+        perror("(send_piece)write");
         return -1;
     }
 
@@ -231,7 +230,7 @@ stream_writer(int fd)
 
     while((pl = requests[fd].list)) {
         requests[fd].list = requests[fd].list->next;
-        send_chunk(fd, pl);
+        send_piece(fd, pl);
         free(pl);
         cpc_yield;
     }
@@ -293,14 +292,14 @@ stream_reader(int fd)
                ntohl(*((int32_t *)(res+1))),
                ntohl(*((int32_t *)(res+5))),
                ntohl(*((int32_t *)(res+9))));
+
         /* add request in request list */
-        /* XXX fl_tmp = send_unchoke[fd]; */
-        sended_pieces[fd].list = add_piece(sended_pieces[fd].list,
-                                           ntohl(*((int64_t *)(res+1))),
-                                           ntohl(*((int32_t *)(res+5))),
-                                           ntohl(*((int32_t *)(res+9))));
-        if(sended_pieces[fd].flag == 0) {
-            sended_pieces[fd].flag = 1;
+        requests[fd].list = add_piece(requests[fd].list,
+                                      ntohl(*((int64_t *)(res + 1))),
+                                      ntohl(*((int32_t *)(res + 5))),
+                                      ntohl(*((int32_t *)(res + 9))));
+        if(requests[fd].flag == 0) {
+            requests[fd].flag = 1;
             cpc_spawn stream_writer(fd);
         }
         break;
@@ -311,11 +310,11 @@ stream_reader(int fd)
                ntohl(*((int32_t *)(res + 5))),
                ntohl(*((int32_t *)(res + 9))));
 
-        /* XXX fl_tmp = send_unchoke[fd]; */
-        sended_pieces[fd].list = remove_piece(sended_pieces[fd].list,
-                                              ntohl(*((int64_t *)(res+1))),
-                                              ntohl(*((int32_t *)(res+5))),
-                                              ntohl(*((int32_t *)(res+9))));
+        requests[fd].list = remove_piece(requests[fd].list,
+                                         ntohl(*((int64_t *)(res+1))),
+                                         ntohl(*((int32_t *)(res+5))),
+                                         ntohl(*((int32_t *)(res+9))));
+
         break;
 
     default :
