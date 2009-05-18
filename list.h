@@ -36,6 +36,7 @@ typedef struct flist{
 	  Is this realy needed?
      */
     int flag;
+    ht_torrent *t;
     piece *list;
 } flist;
 

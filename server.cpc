@@ -20,7 +20,6 @@
 #define BUF_LEGNTH 512
 #define DIR_LEN 512
 
-ht_torrent *test;
 /*XXX 1024 -> FD_MAX*/
 flist sended_pieces[1024];
 
@@ -100,9 +99,8 @@ send_chunk(int fd, piece *chunk)
     int file;
     unsigned char buf[13];
     void *source;
-    ht_torrent *t;
+    ht_torrent *t = sended_pieces[fd].t;
 
-    t = test; /* XXX */
     printf("send chunk: length=%d, offset=%lld\n",
            chunk->length,
            (long long int)chunk->offset*t->p_length+chunk->begin);
@@ -180,6 +178,9 @@ handshake(hashtable *ht , int fd){
         fprintf(stderr, "(handshake) : cannot find the hash in the table");
         return EXIT_FAILURE;
     }
+
+    sended_pieces[fd].t = torrent;
+
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
     res = malloc( 1 + 19 + 8 + 20 + 20 );
@@ -208,7 +209,6 @@ handshake(hashtable *ht , int fd){
         return EXIT_FAILURE;
     }
 
-
     if(send_bitfield(fd, torrent)<0){
         fprintf(stderr, "couldn't send bitfield\n");
         return EXIT_FAILURE;
@@ -219,15 +219,12 @@ handshake(hashtable *ht , int fd){
         return EXIT_FAILURE;
     }
 
-    /* XXX */ test = torrent;
-
     return EXIT_SUCCESS;
 }
 
 cps void
 stream_writer(int fd)
 {
-    /* XXX rewrite */
     //while request list non empty, send chunks
     piece *pl;
     
