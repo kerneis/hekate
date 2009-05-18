@@ -143,8 +143,8 @@ send_chunk(int fd, piece *chunk)
     return 0;
 }
 /*
-  return EXIT_FAILURE if sth wrong happend in
-  handshake otherwise return EXIT_SUCCESS
+  return 01 if sth wrong happend in
+  handshake otherwise return 0
  */
 cps int
 handshake(hashtable *ht , int fd)
@@ -157,27 +157,27 @@ handshake(hashtable *ht , int fd)
 
     if(cpc_full_read(fd, t, 68) < 68) {
         perror("(handshake)cpc_full_read");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(t[0] != 19) {
         fprintf(stderr,"(handshake)bad protocol %c\n", *t);
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(memcmp(t + 1, protocol, 19)) {
         perror("(handshake)memcmp");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(!memcpy(hash, t + 28, 20)) {
         perror("(handshake)memcpy");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if (!(torrent = ht_get( ht, (unsigned char *)hash ))) {
         fprintf(stderr, "(handshake) : cannot find the hash in the table");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     sended_pieces[fd].t = torrent;
@@ -199,7 +199,7 @@ handshake(hashtable *ht , int fd)
 
     if(!memcpy(tmp, torrent->info_hash, 20)) {
         perror("(handshake)cannot copy the hash");
-        return EXIT_FAILURE;
+        return -1;
     }
     tmp += 20;
 
@@ -207,20 +207,20 @@ handshake(hashtable *ht , int fd)
     tmp = NULL;
     if(cpc_full_write(fd, res, 68) < 68) {
         perror("(handshake)cannot write to fd");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(send_bitfield(fd, torrent)<0) {
         fprintf(stderr, "couldn't send bitfield\n");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     if(send_unchoke(fd)<0) {
         fprintf(stderr, "couldn't send unchoke\n");
-        return EXIT_FAILURE;
+        return -1;
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 cps void
@@ -295,7 +295,6 @@ stream_reader(int fd)
                ntohl(*((int32_t *)(res + 5))),
                ntohl(*((int32_t *)(res + 9))));
         /* add request in request list */
-        /* XXX fl_tmp = send_unchoke[fd]; */
         sended_pieces[fd].list = add_piece(sended_pieces[fd].list,
                                            ntohl(*((int64_t *)(res + 1))),
                                            ntohl(*((int32_t *)(res + 5))),
@@ -336,7 +335,7 @@ client(hashtable *t, int client_fd)
     unsigned char buffer[BUF_LEGNTH];
 
     rc = handshake(t, client_fd);
-    if(rc == EXIT_FAILURE) {
+    if(rc < 0) {
         fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
         return;
     }
