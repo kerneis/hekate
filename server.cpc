@@ -234,14 +234,15 @@ stream_writer(int fd)
     pieces_list * pl = NULL;
     
     fl_tmp = sended_pieces[fd];
-    pl = fl_tmp -> list;
     
-    while((!pl) && (fl_tmp->flag != 0)){
+    while(!(pl = fl_tmp -> list)){
+        fl_tmp->list = fl_tmp->list->next;
         send_chunk(fd, pl->elmt);
-        pl = pl -> next;
+        free(pl->elmt);
+        free(pl);
         cpc_yield;
     }
-    fl_tmp -> flag = 0;
+    fl_tmp->flag = 0;
     return;
 }
 
@@ -308,8 +309,8 @@ stream_reader(int fd)
                                  ntohl(*((int32_t *)(res+5))),
                                  ntohl(*((int32_t *)(res+9))));
         if(!(fl_tmp->flag)){
-            cpc_spawn stream_writer(fd);
             fl_tmp -> flag = 1;
+            cpc_spawn stream_writer(fd);
         }
         break;
 
