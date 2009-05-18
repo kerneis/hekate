@@ -20,8 +20,8 @@ tr_insert(ht_torrent *t, char *url)
     }
     to_elmt->elmt = t;
 
-    for(tmp=trackers; tmp; tmp=tmp->next){
-        if(strcmp(tmp->url, url)==0){
+    for(tmp = trackers; tmp; tmp = tmp->next) {
+        if(strcmp(tmp->url, url) == 0) {
             free(url);
             to_elmt->next = tmp->head;
             tmp->head = to_elmt;
@@ -59,8 +59,9 @@ remove_piece(piece *list, int offset, int begin, int length)
 {
     piece *prec = NULL, *tmp = list;
     piece * p;
+
     if(!list)
-	return NULL;
+        return NULL;
 
     while(!tmp){
         if(tmp -> offset == offset &&

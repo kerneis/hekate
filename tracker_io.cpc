@@ -14,13 +14,13 @@ char *peer_id = "BittorrentSeeder-000"; /* XXX escape the peer_id somewhere */
 char *port = "6969";
 
 char *
-generate_get(char *url, ht_torrent * t, CURL *e_handler)
+generate_get(char *url, ht_torrent *t, CURL *e_handler)
 {
     int length;
-    char *res , *hash;
+    char *res, *hash;
 
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
-    if(!hash){
+    if(!hash) {
         fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
         /*XXX is this a real good idea to return a NULL?!*/
         return NULL;
@@ -38,19 +38,17 @@ generate_get(char *url, ht_torrent * t, CURL *e_handler)
 
     res = malloc(length);
     assert(res);
-    snprintf(res ,length, "%s?info_hash=%s&peer_id=%.20s&port=%s&"
+    snprintf(res, length, "%s?info_hash=%s&peer_id=%.20s&port=%s&"
              "uploaded=0&downloaded=0&left=0&event=started",
-             url , hash, peer_id, port);
+             url, hash, peer_id, port);
 
     curl_free(hash);
     return res;
 }
 
 size_t
-writer(void  *ptr ,size_t size ,size_t nmemb,void *stream )
+writer(void  *ptr, size_t size, size_t nmemb, void *stream)
 {
-    int i;
-    size_t realsize = size * nmemb;
     return 0;
 }
 
@@ -64,8 +62,7 @@ connection(tr_list *t, int timer)
 
     cpc_sleep(timer);
 
-    current = t->head;
-    if(strncmp(t->url, "http://", 7) != 0){
+    if(strncmp(t->url, "http://", 7) != 0) {
         fprintf(stderr, "(connection)bad tracker url: %s\n", t->url);
         return;
     };
@@ -73,18 +70,19 @@ connection(tr_list *t, int timer)
     e_handle = curl_easy_init();
     if(!e_handle) goto curl_error;
 
-    do{
+    for(current = t->head; current; current  = current -> next) {
+
         request = generate_get(t->url, current->elmt, e_handle);
-        if(!request){
+        if(!request) {
             perror("(connection)generate_get");
             continue;
         }
 
-        rc = curl_easy_setopt(e_handle ,CURLOPT_URL, request );
-        if(rc!=CURLE_OK) goto curl_error;
+        rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
+        if(rc != CURLE_OK) goto curl_error;
 
-        rc = curl_easy_setopt(e_handle ,CURLOPT_WRITEFUNCTION ,writer );
-        if(rc!=CURLE_OK) goto curl_error;
+        rc = curl_easy_setopt(e_handle, CURLOPT_WRITEFUNCTION, writer);
+        if(rc != CURLE_OK) goto curl_error;
 
         cpc_detach;
         rc = curl_easy_perform(e_handle);
@@ -92,14 +90,14 @@ connection(tr_list *t, int timer)
         if(!rc) goto curl_error;
 
         free(request);
-    } while((current  = current -> next));
+    }
 
     curl_easy_cleanup(e_handle);
 
     cpc_spawn(t, TRACKER_TIMER);
 
     return;
-    
+
  curl_error:
     fprintf(stderr, "curl error: %s\n", curl_easy_strerror(rc));
     curl_easy_strerror(rc);
@@ -112,7 +110,7 @@ init_trackers()
     tr_list *current = trackers;
     /* TODO useless with a new .torrent checker daemon */
     assert(trackers);
-    while(current){
+    while(current) {
         cpc_spawn connection(current, 0);
         current = current -> next;
     }

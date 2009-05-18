@@ -7,10 +7,10 @@
 #include "parse.h"
 #include "hashtable.h"
 
-uint
+uint32_t
 hash(unsigned char *key, int ht_size)
 {
-    uint *seed = (uint *)key;
+    uint32_t *seed = (uint32_t *)key;
     return (seed[0] ^ seed[1] ^ seed[2] ^ seed[3] ^ seed[4]) % ht_size;
 }
 
@@ -18,7 +18,7 @@ hash(unsigned char *key, int ht_size)
 hashtable *
 ht_create(int size)
 {
-    hashtable * ht = malloc(sizeof(hashtable));
+    hashtable *ht = malloc(sizeof(hashtable));
     if(!ht) return NULL;
 
     ht->size = size;
@@ -30,9 +30,9 @@ ht_create(int size)
 
 
 unsigned char *
-ht_insert(hashtable * ht, unsigned char *key, void *value)
+ht_insert(hashtable *ht, unsigned char *key, void *value)
 {
-    uint h = hash(key, ht->size);
+    uint32_t h = hash(key, ht->size);
     ht_element * hte = malloc(sizeof(ht_element));
     if(!hte) return NULL;
 
@@ -49,10 +49,10 @@ ht_insert(hashtable * ht, unsigned char *key, void *value)
 
 
 void*
-ht_get(hashtable * ht, unsigned char *key)
+ht_get(hashtable *ht, unsigned char *key)
 {
-    uint h = hash(key, ht->size);
-    ht_element * hte = ht->table[h];
+    uint32_t h = hash(key, ht->size);
+    ht_element *hte = ht->table[h];
     while(hte) {
         if(!memcmp(key, hte->key, 20))
             return hte->content;
@@ -63,7 +63,7 @@ ht_get(hashtable * ht, unsigned char *key)
 
 
 int
-ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
+ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
 {
     int i, c, path_length;
     char *path;
@@ -79,21 +79,22 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 
         switch(c){
         case 0:
-            if(strcmp((raw->set.l[i])->s, "length")==0 &&
-               (raw->set.l[i+1])->type == INT ) {
+            if(strcmp((raw->set.l[i])->s, "length") == 0 &&
+               (raw->set.l[i+1])->type == INT) {
                 elmt->f_length = (raw->set.l[i+1])->i;
                 c++;
             }
-            if(strcmp((raw->set.l[i])->s, "files")==0){
+            if(strcmp((raw->set.l[i])->s, "files") == 0) {
                 return -2; /* TODO: multiple files case */
                 c++;
             }
             break;
         case 1:
-            if(strcmp((raw->set.l[i])->s, "name")==0 &&
-               (raw->set.l[i+1])->type == STRING ) {
-                path_length = strlen(raw->set.l[i+1]->s)+strlen(curr_path)+2;
-                if(!(path=malloc(path_length))){
+            if(strcmp((raw->set.l[i])->s, "name") == 0 &&
+               (raw->set.l[i+1])->type == STRING) {
+                path_length = strlen(raw->set.l[i+1]->s) + strlen(curr_path) + 2;
+                path = malloc(path_length);
+                if(!path) {
                     perror("(ht_info_load)malloc");
                     return -1;
                 }
@@ -105,7 +106,7 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
             break;
 
         case 2:
-            if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
+            if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
                (raw->set.l[i+1])->type == INT) {
                 elmt->p_length = (raw->set.l[i+1])->i;
                 c++;
@@ -114,8 +115,8 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 
         case 3:
             /* TODO: multiple files case */
-            if(strcmp((raw->set.l[i])->s, "pieces")==0 &&
-               (raw->set.l[i+1])->type == STRING ) {
+            if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
+               (raw->set.l[i+1])->type == STRING) {
                 c++;
             }
             break;
@@ -128,13 +129,14 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
 }
 
 int
-ht_load(hashtable * table, char *curr_path, benc *raw)
+ht_load(hashtable *table, char *curr_path, benc *raw)
 {
     int i, c, rc;
-    ht_torrent * elmt;
+    ht_torrent *elmt;
     char *url = NULL;
 
-    if(!(elmt = malloc(sizeof(ht_torrent)))) {
+    elmt = malloc(sizeof(ht_torrent));
+    if(!elmt) {
         perror("ht_load");
         free_benc(raw);
         return -1;
@@ -146,15 +148,15 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
 
     c=0; /* Use the fact that dictionnary are sorted */
     for(i=0; i<raw->set.used; i+=2) {
-        if( (raw->set.l[i])->type != STRING ) {
+        if((raw->set.l[i])->type != STRING) {
             free_benc(raw);
             return -2;
         }
 
-        switch(c){
+        switch(c) {
         case 0:
             if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
-               (raw->set.l[i+1])->type == STRING ) {
+               (raw->set.l[i+1])->type == STRING) {
                 url = (raw->set.l[i+1])->s;
                 raw->set.l[i+1]->s = NULL;
                 c++;
@@ -162,9 +164,10 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
             break;
 
         case 1:
-            if(strcmp((raw->set.l[i])->s, "info") == 0&&
+            if(strcmp((raw->set.l[i])->s, "info") == 0 &&
                (raw->set.l[i+1])->type == DICT ) {
-                if((rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]))<0){
+                rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]);
+                if(rc < 0) {
                     free_benc(raw);
                     return rc;
                 }
