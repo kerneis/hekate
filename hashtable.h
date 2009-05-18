@@ -17,8 +17,8 @@ typedef struct hashtable{
 }hashtable;
 
 hashtable * ht_create(int size);
-unsigned char * ht_insert(hashtable * ht, unsigned char *key, void *value);
-void * ht_get(hashtable * ht, unsigned char *key);
+unsigned char * ht_insert(hashtable *ht, unsigned char *key, void *value);
+void * ht_get(hashtable *ht, unsigned char *key);
 
 
 typedef struct ht_torrent{

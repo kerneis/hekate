@@ -94,7 +94,6 @@ send_unchoke(int fd)
     return 0;
 }
 
-//send_chunk(int fd, int chunk , int begin, int length)
 cps int
 send_chunk(int fd, piece *chunk)
 {
@@ -226,8 +225,28 @@ handshake(hashtable *ht , int fd){
     return EXIT_SUCCESS;
 }
 
+cps void
+stream_writer(int fd)
+{
+    /* XXX rewrite */
+    //while request list non empty, send chunks
+    flist * fl_tmp = NULL;
+    pieces_list * pl = NULL;
+    
+    fl_tmp = sended_pieces[fd];
+    pl = fl_tmp -> list;
+    
+    while((!pl) && (fl_tmp->flag != 0)){
+        send_chunk(fd, pl->elmt);
+        pl = pl -> next;
+        cpc_yield;
+    }
+    fl_tmp -> flag = 0;
+    return;
+}
+
 cps int
-stream_read(int fd)
+stream_reader(int fd)
 {
     uint32_t tmp = 0, length = 0;
     char * res = NULL;
@@ -264,11 +283,13 @@ stream_read(int fd)
         //no payload
         printf("unchoke\n");
         break;
+
     case  2 :
         //interested
         //no payload
         printf("Win : so let him dl everything he want\n");
         break;
+
     case  3 :
         //not interested
         // XXX set timer
@@ -281,25 +302,30 @@ stream_read(int fd)
                ntohl(*((int32_t *)(res+5))) ,
                ntohl(*((int32_t *)(res+9))) );
         /* add request in request list */
-	fl_tmp = send_unchoke[fd];
-	fl_tmp->list = add_piece(fl_tmp->list,
-			      ntohl(*((int64_t *)(res+1))),
-			      ntohl(*((int32_t *)(res+5))),
-			      ntohl(*((int32_t *)(res+9))));
-	fl_tmp -> flag = 1;
-	break;
+        /* XXX fl_tmp = send_unchoke[fd]; */
+        fl_tmp->list = add_piece(fl_tmp->list,
+                                 ntohl(*((int64_t *)(res+1))),
+                                 ntohl(*((int32_t *)(res+5))),
+                                 ntohl(*((int32_t *)(res+9))));
+        if(!(fl_tmp->flag)){
+            cpc_spawn stream_writer(fd);
+            fl_tmp -> flag = 1;
+        }
+        break;
+
     case  8 ://cancel
         printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
                ntohl(*((int32_t *)(res+1))) ,
                ntohl(*((int32_t *)(res+5))) ,
                ntohl(*((int32_t *)(res+9))) );
 
-	fl_tmp = send_unchoke[fd];
-	fl_tmp->list = remove_piece(fl_tmp->list,
-				 ntohl(*((int64_t *)(res+1))),
-				 ntohl(*((int32_t *)(res+5))),
-				 ntohl(*((int32_t *)(res+9))));
-	break;
+        /* XXX fl_tmp = send_unchoke[fd]; */
+        fl_tmp->list = remove_piece(fl_tmp->list,
+                                    ntohl(*((int64_t *)(res+1))),
+                                    ntohl(*((int32_t *)(res+5))),
+                                    ntohl(*((int32_t *)(res+9))));
+        break;
+
     default :
         free(res);
         fprintf(stderr , "(stream_read)Someone sending weird message\n");
@@ -308,24 +334,6 @@ stream_read(int fd)
     }
     free(res);
     return 0;
-}
-
-cps void
-stream_write(int fd)
-{
-    //while request list non empty, send chunks
-    flist * fl_tmp = NULL;
-    pieces_list * pl = NULL;
-    
-    fl_tmp = sended_pieces[fd];
-    pl = fl_tmp -> list;
-    
-    while((!pl) && (fl_tmp->flag != 0)){
-        send_chunk(fd, pl->elmt);
-        pl = pl -> next;
-    }
-    fl_tmp -> flag = 0;
-    return;
 }
 
 cps void
@@ -338,11 +346,11 @@ client(hashtable *t, int client_fd){
         fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
         return;
     }
-    cpc_spawn stream_write(client_fd);
 
     while(1)
-        if(stream_read(client_fd)<0)
+        if(stream_reader(client_fd)<0)
             break;
+
     close(client_fd);
     return;
 }
