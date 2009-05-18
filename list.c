@@ -51,14 +51,7 @@ add_piece(piece *l, int64_t offset, int begin, int length)
     p->length = length;
     p->next = l;
 
-    else{
-        /*tmp -> next == NULL*/
-        tmp -> next = malloc(sizeof(pieces_list));
-        tmp -> next -> elmt = p;
-        tmp -> next -> next = NULL;
-        return l;
-    }
-    return l;
+    return p;
 }
 
 piece*
