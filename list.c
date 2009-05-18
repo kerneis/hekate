@@ -55,28 +55,26 @@ add_piece(piece *l, int64_t offset, int begin, int length)
 }
 
 piece*
-remove_piece(piece *l, int offset, int begin, int length)
+remove_piece(piece *list, int offset, int begin, int length)
 {
-    /*    piece *prec = NULL, *tmp = pl;
+    piece *prec = NULL, *tmp = list;
     piece * p;
-    if(!pl)
+    if(!list)
 	return NULL;
-    
-    while(!tmp){
-        p = tmp -> elmt;
 
-        if(p -> offset == offset &&
-           p -> begin  == begin &&
-           p -> length == length){
+    while(!tmp){
+        if(tmp -> offset == offset &&
+           tmp -> begin  == begin &&
+           tmp -> length == length){
             if(prec == NULL)
-                return pl-> next;
+                return list-> next;
             else
                 prec -> next = tmp ->next;
             break;
         }
         prec = tmp;
         tmp = tmp -> next;
-        }
-        return pl;*/
-    return NULL;
+    }
+
+    return list;
 }
