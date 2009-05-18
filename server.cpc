@@ -22,7 +22,7 @@
 
 ht_torrent *test;
 /*XXX 1024 -> FD_MAX*/
-flist* sended_pieces[1024];
+flist sended_pieces[1024];
 
 cps int
 cpc_full_read(int fd, void *buf, int length)
