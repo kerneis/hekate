@@ -21,9 +21,9 @@ generate_get(char *url, ht_torrent * t, CURL *e_handler)
 
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
     if(!hash){
-	fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
-	/*XXX is this a real good idea to return a NULL?!*/
-	return NULL;
+        fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
+        /*XXX is this a real good idea to return a NULL?!*/
+        return NULL;
     }
     length =
         strlen(url)         /* url */
@@ -55,37 +55,34 @@ writer(void  *ptr ,size_t size ,size_t nmemb,void *stream )
 }
 
 cps void
-connection(tr_list *trackers, int timer)
+connection(tr_list *t, int timer)
 {
-
     CURLcode rc = NULL;
     CURL *e_handle = NULL;
-    char *request = NULL, *tracker = NULL;
+    char *request = NULL;
     to_list *current = NULL;
 
     cpc_sleep(timer);
 
-    current = trackers->head;
-
-    if(strncmp(trackers->url, "http://", 7) != 0){
-	fprintf(stderr, "(connection)bad tracker url: %s\n",
-		trackers->url);
-	return;
+    current = t->head;
+    if(strncmp(t->url, "http://", 7) != 0){
+        fprintf(stderr, "(connection)bad tracker url: %s\n", t->url);
+        return;
     };
 
     e_handle = curl_easy_init();
     if(!e_handle) goto curl_error;
-    
+
     do{
-	request = generate_get(trackers->url, current->elmt, e_handle);
-	if(!request){
-	    perror("(connection)generate_get");
-	    continue;
-	}
+        request = generate_get(t->url, current->elmt, e_handle);
+        if(!request){
+            perror("(connection)generate_get");
+            continue;
+        }
 
         rc = curl_easy_setopt(e_handle ,CURLOPT_URL, request );
         if(rc!=CURLE_OK) goto curl_error;
-	
+
         rc = curl_easy_setopt(e_handle ,CURLOPT_WRITEFUNCTION ,writer );
         if(rc!=CURLE_OK) goto curl_error;
 
@@ -99,7 +96,7 @@ connection(tr_list *trackers, int timer)
 
     curl_easy_cleanup(e_handle);
 
-    cpc_spawn(trackers, TRACKER_TIMER);
+    cpc_spawn(t, TRACKER_TIMER);
 
     return;
     
@@ -117,6 +114,6 @@ init_trackers()
     assert(trackers);
     while(current){
         cpc_spawn connection(current->head, 0);
-        current = current->next;
+        current = current -> next;
     }
 }

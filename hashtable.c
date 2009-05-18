@@ -103,6 +103,7 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
                 c++;
             }
             break;
+
         case 2:
             if(strcmp((raw->set.l[i])->s, "piece length")==0 &&
                (raw->set.l[i+1])->type == INT) {
@@ -159,6 +160,7 @@ ht_load(hashtable * table, char *curr_path, benc *raw)
                 c++;
             }
             break;
+
         case 1:
             if(strcmp((raw->set.l[i])->s, "info") == 0&&
                (raw->set.l[i+1])->type == DICT ) {
