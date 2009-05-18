@@ -99,7 +99,7 @@ ht_info_load(ht_torrent * elmt, char *curr_path, benc *raw)
                 }
                 snprintf(path, path_length, "%s/%s",
                          curr_path, (raw->set.l[i+1])->s);
-                elmt->path = curr_path;
+                elmt->path = path;
                 c++;
             }
             break;
