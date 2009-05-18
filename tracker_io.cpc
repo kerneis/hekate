@@ -113,7 +113,7 @@ init_trackers()
     /* TODO useless with a new .torrent checker daemon */
     assert(trackers);
     while(current){
-        cpc_spawn connection(current, 0);
+        cpc_spawn connection(current->head, 0);
         current = current -> next;
     }
 }
