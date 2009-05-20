@@ -160,7 +160,7 @@ handshake(hashtable *ht , int fd)
     }
 
     if(t[0] != 19) {
-        fprintf(stderr,"(handshake)bad protocol %c\n", *t);
+        fprintf(stderr,"(handshake)bad protocol %02x\n", (*t) & 0xFF);
         return -1;
     }
 
@@ -172,7 +172,7 @@ handshake(hashtable *ht , int fd)
     memcpy(hash, t + 28, 20);
 
     if (!(torrent = ht_get( ht, (unsigned char *)hash ))) {
-        fprintf(stderr, "(handshake) : cannot find the hash in the table");
+        fprintf(stderr, "(handshake) : cannot find the hash in the table\n");
         return -1;
     }
 
