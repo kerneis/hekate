@@ -29,7 +29,7 @@ cpc_full_read(int fd, char *buf, int len)
     int pos, rc;
 
     pos = 0;
-    while(pos < len) {
+    while(1) {
         rc = read(fd, buf + pos, len - pos);
         if(rc == 0) {
             errno = EPIPE;
@@ -54,7 +54,7 @@ cpc_full_write(int fd, const char *buf, int len)
     int pos, rc;
 
     pos = 0;
-    while(pos < len) {
+    while(1) {
         /* Don't io_wait the first time. */
         rc = write(fd, buf + pos, len - pos);
         if(rc < 0) {
