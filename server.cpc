@@ -202,7 +202,7 @@ handshake(hashtable *ht , int fd)
     }
     tmp += 20;
 
-    strncpy(tmp, peer_id, 20);
+    memcpy(tmp, peer_id, 20);
     tmp = NULL;
     if(cpc_full_write(fd, res, 68) < 68) {
         perror("(handshake)cannot write to fd");
