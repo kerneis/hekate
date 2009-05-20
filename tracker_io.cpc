@@ -12,6 +12,7 @@
 
 char *peer_id = "BittorrentSeeder-000"; /* XXX escape the peer_id somewhere */
 char *port = "6969";
+int notracker = 0;
 
 char *
 generate_get(char *url, ht_torrent *t, CURL *e_handler)
@@ -107,9 +108,16 @@ connection(tr_list *t, int timer)
 void
 init_trackers()
 {
-    tr_list *current = trackers;
-    /* TODO useless with a new .torrent checker daemon */
-    assert(trackers);
+    tr_list *current;
+
+    if(notracker)
+        return;
+
+    if(trackers == NULL)
+        fprintf(stderr, "Warning: no trackers!\n");
+
+    current = trackers;
+
     while(current) {
         cpc_spawn connection(current, 0);
         current = current -> next;
