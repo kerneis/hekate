@@ -227,10 +227,13 @@ stream_writer(int fd)
 {
     //while request list non empty, send chunks
     piece *pl;
+    int rc;
 
     while((pl = requests[fd].list)) {
         requests[fd].list = requests[fd].list->next;
-        send_piece(fd, pl);
+        rc = send_piece(fd, pl);
+        if(rc < 0)
+            shutdown(fd, 2);    /* for now */
         free(pl);
         cpc_yield;
     }
