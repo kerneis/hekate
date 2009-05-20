@@ -428,6 +428,7 @@ stream_reader(int fd)
     case  3 :
         //not interested
         printf("not interested\n");
+        free(res);
         return -1; /* XXX */
 
     case  6 ://request
@@ -463,7 +464,7 @@ stream_reader(int fd)
     default :
         free(res);
         fprintf(stderr , "(stream_read)Someone sending weird message\n");
-        //not supported by protocol
+        free(res);
         return -1;
     }
     free(res);
