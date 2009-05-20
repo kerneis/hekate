@@ -3,6 +3,8 @@
 
 #include "list.h"
 
+extern int notracker;
+
 char *port;
 char *peer_id;
 tr_list *trackers;

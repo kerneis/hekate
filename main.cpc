@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -107,10 +108,22 @@ main(int argc, char **argv)
     hashtable *table;
     CURLcode global;
 
-    if(argc < 2 ) {
-        fprintf(stderr, "Usage: %s folder\n", argv[0]);
-        exit(EXIT_FAILURE);
+    while(1) {
+        int opt;
+        opt = getopt(argc, argv, "t");
+        if(opt == -1)
+            break;
+        switch(opt) {
+        case 't':
+            notracker = 1;
+            break;
+        default:
+            goto usage;
+        }
     }
+
+    if(optind >= argc )
+        goto usage;
 
     global = curl_global_init(CURL_GLOBAL_ALL);
     assert(!global);
@@ -123,7 +136,7 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    upload(table, argv[1]);
+    upload(table, argv[optind]);
 
     init_trackers(trackers);
 
@@ -135,4 +148,8 @@ main(int argc, char **argv)
     curl_global_cleanup();
 
     return 0;
+
+    usage:
+    fprintf(stderr, "Foo!\n");
+    exit(1);
 }
