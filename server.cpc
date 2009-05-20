@@ -72,6 +72,46 @@ cpc_full_write(int fd, const char *buf, int len)
 }
 
 cps int
+cpc_full_write_2(int fd,
+                 const char *buf1, int len1, const char *buf2, int len2)
+{
+    struct iovec iov[2];
+    int pos, rc;
+
+    if(len2 == 0)
+        return cpc_full_write(fd, buf1, len1);
+
+    iov[0].iov_base = buf1;
+    iov[0].iov_len = len1;
+
+    iov[1].iov_base = buf2;
+    iov[1].iov_len = len2;
+
+    pos = 0;
+    while(1) {
+        rc = writev(fd, iov, 2);
+        if(rc < 0) {
+            if(errno != EAGAIN)
+                return -1;
+        } else {
+            pos += rc;
+            if(pos >= len1)
+                break;
+        }
+        cpc_io_wait(fd, CPC_IO_OUT);
+    }
+
+    if(pos < len1 + len2) {
+        rc = cpc_full_write(fd, buf2 + (pos - len1), len2 - (pos - len1));
+        if(rc < 0)
+            return -1;
+        pos += rc;
+    }
+
+    return pos;
+}
+
+cps int
 send_message_2(int fd, int id,
                char *body1, int bodylen1,
                char *body2, int bodylen2)
