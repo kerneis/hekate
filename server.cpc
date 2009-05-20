@@ -269,8 +269,8 @@ send_piece(int fd, piece *chunk)
     source = requests[fd].t->map;
     source += chunk->offset*t->p_length+chunk->begin;
 
-    printf("send chunk: length=%d, offset=%lld\n",
-           chunk->length,
+    printf("send chunk %d: length=%d, offset=%lld\n",
+           fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
     *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
