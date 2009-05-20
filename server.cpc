@@ -102,6 +102,7 @@ cpc_full_write_2(int fd,
     }
 
     if(pos < len1 + len2) {
+        cpc_io_wait(fd, CPC_IO_OUT);
         rc = cpc_full_write(fd, buf2 + (pos - len1), len2 - (pos - len1));
         if(rc < 0)
             return -1;
@@ -151,6 +152,7 @@ cpc_full_write_3(int fd,
     }
 
     if(pos < len1 + len2 + len3) {
+        cpc_io_wait(fd, CPC_IO_OUT);
         if(pos < len1)
             rc = cpc_full_write_2(fd,
                                   buf2 + (pos - len1), len2 - (pos - len1),
