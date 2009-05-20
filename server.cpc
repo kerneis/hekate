@@ -289,7 +289,7 @@ cps int
 handshake(hashtable *ht , int fd)
 {
     int rc = 0;
-    const char *protocol = "BitTorrent protocol";
+    const char *protocol = "\023BitTorrent protocol";
     unsigned char hash[20];
     char *res = NULL, *tmp = NULL, t[68];
     ht_torrent *torrent = NULL;
@@ -300,13 +300,8 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    if(t[0] != 19) {
-        fprintf(stderr,"(handshake)bad protocol %02x\n", (*t) & 0xFF);
-        return -1;
-    }
-
-    if(memcmp(t + 1, protocol, 19) != 0) {
-        perror("(handshake)memcmp");
+    if(memcmp(t, protocol, 20) != 0) {
+        fprintf(stderr, "(handshake)bad protocol.\n");
         return -1;
     }
 
