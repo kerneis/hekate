@@ -393,40 +393,49 @@ stream_reader(int fd)
         //keepalive message
         return 0;
     }
-    //non-keepalive message
-    /* beware of malloc size, should never be >12 except for bitfield */
-    res = malloc(length);
-    assert(res);
-    if(cpc_full_read(fd, res, length) < 0) {
-        perror("(stream_read)cpc_full_read");
-        free(res);
+
+    if(length > 128 * 1024) {
+        printf("Unbelievably long message (%d bytes).\n", length);
         return -1;
     }
 
+    res = malloc(length);
+    if(res == NULL)
+        return -1;
+
+    if(cpc_full_read(fd, res, length) < 0) {
+        perror("(stream_read)cpc_full_read");
+        goto fail;
+    }
+
     printf("<- type = %d, length = %d\n", res[0], length);
+
+    if(res[0] != 5 && length > 20) {
+        printf("Unbelievably long message!\n");
+        goto fail;
+    }
+
     switch(res[0]) {
-    case  7 : case  5 : case 0: case 4:
-        free(res);
-        return 0;
-    case  1 :
+    case 7: case 5: case 0: case 4:
+        break;
+    case 1:
         //unchoke
         //no payload
         printf("unchoke\n");
         break;
 
-    case  2 :
+    case 2:
         //interested
         //no payload
-        printf("Win : so let him dl everything he want\n");
+        printf("interested\n");
         break;
 
-    case  3 :
+    case 3:
         //not interested
         printf("not interested\n");
-        free(res);
-        return -1; /* XXX */
+        goto fail;
 
-    case  6 ://request
+    case 6:                     //request
         printf("request: index = %d \tbegin = %d\tlength = %d\n",
                ntohl(*((int32_t *)(res+1))),
                ntohl(*((int32_t *)(res+5))),
@@ -443,7 +452,7 @@ stream_reader(int fd)
         }
         break;
 
-    case  8 ://cancel
+    case 8:                    //cancel
         printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
                ntohl(*((int32_t *)(res + 1))),
                ntohl(*((int32_t *)(res + 5))),
@@ -456,14 +465,16 @@ stream_reader(int fd)
 
         break;
 
-    default :
-        free(res);
+    default:
         fprintf(stderr , "(stream_read)Someone sending weird message\n");
-        free(res);
-        return -1;
+        goto fail;
     }
     free(res);
     return 0;
+
+ fail:
+    free(res);
+    return -1;
 }
 
 cps void
