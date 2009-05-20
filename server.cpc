@@ -180,21 +180,9 @@ send_message_2(int fd, int id,
     *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
     buf[4] = id;
 
-    rc = cpc_full_write(fd, buf, 5);
+    rc = cpc_full_write_3(fd, buf, 5, body1, bodylen1, body2, bodylen2);
     if(rc < 5)
         return -1;
-
-    if(bodylen1 > 0) {
-        rc = cpc_full_write(fd, body1, bodylen1);
-        if(rc < bodylen1)
-            return -1;
-    }
-
-    if(bodylen2 > 0) {
-        rc = cpc_full_write(fd, body2, bodylen2);
-        if(rc < bodylen2)
-            return -1;
-    }
 
     return 1;
 }
