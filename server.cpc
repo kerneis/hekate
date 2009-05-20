@@ -169,10 +169,7 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    if(!memcpy(hash, t + 28, 20)) {
-        perror("(handshake)memcpy");
-        return -1;
-    }
+    memcpy(hash, t + 28, 20);
 
     if (!(torrent = ht_get( ht, (unsigned char *)hash ))) {
         fprintf(stderr, "(handshake) : cannot find the hash in the table");
@@ -196,10 +193,7 @@ handshake(hashtable *ht , int fd)
         tmp[4] =tmp[5] =tmp[6] =tmp[7] = 0;
     tmp += 8;
 
-    if(!memcpy(tmp, torrent->info_hash, 20)) {
-        perror("(handshake)cannot copy the hash");
-        return -1;
-    }
+    memcpy(tmp, torrent->info_hash, 20);
     tmp += 20;
 
     memcpy(tmp, peer_id, 20);
