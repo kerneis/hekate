@@ -382,21 +382,25 @@ listening(hashtable * table)
             client_fd = accept(socket_fd,
                                (struct sockaddr *) &cli_addr,
                                &cli_len);
-        fprintf(stderr,"Got a connection!\n");
-            if(client_fd<0 && errno!=EAGAIN && errno!=EWOULDBLOCK) {
+            if(client_fd<0) {
                 perror("(listening)accept");
                 return;
             }
+            fprintf(stderr,"Got a connection!\n");
 
             flags = fcntl(client_fd, F_GETFL);
+            if(flags < 0)
+                goto fail;
             rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
-            if(flags < 0 || rc < 0) {
-                perror("(listening)fcntl");
-                close(client_fd);
-                continue;
-            }
-
+            if(rc < 0)
+                goto fail;
             cpc_spawn client(table, client_fd);
+            continue;
+
+        fail:
+            perror("(listening)fcntl");
+            close(client_fd);
+            continue;
         }
     }
 
