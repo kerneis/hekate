@@ -371,9 +371,11 @@ stream_writer(int fd)
     while((pl = requests[fd].list)) {
         requests[fd].list = requests[fd].list->next;
         rc = send_piece(fd, pl);
-        if(rc < 0)
-            shutdown(fd, 2);    /* for now */
         free(pl);
+        if(rc < 0) {
+            shutdown(fd, 2);    /* for now */
+            return;
+        }
         cpc_yield;
     }
     requests[fd].flag = 0;
