@@ -141,10 +141,7 @@ send_piece(int fd, piece *chunk)
 
     return 0;
 }
-/*
-  return 01 if sth wrong happend in
-  handshake otherwise return 0
- */
+/* return -1 if sth wrong happend in handshake otherwise return 0 */
 cps int
 handshake(hashtable *ht , int fd)
 {
