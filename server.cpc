@@ -151,7 +151,8 @@ handshake(hashtable *ht , int fd)
     char *res = NULL, *tmp = NULL, t[68];
     ht_torrent *torrent = NULL;
 
-    if(cpc_full_read(fd, t, 68) < 68) {
+    rc = cpc_full_read(fd, t, 68);
+    if(rc < 68) {
         perror("(handshake)cpc_full_read");
         return -1;
     }
@@ -161,14 +162,15 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    if(memcmp(t + 1, protocol, 19)) {
+    if(memcmp(t + 1, protocol, 19) != 0) {
         perror("(handshake)memcmp");
         return -1;
     }
 
     memcpy(hash, t + 28, 20);
 
-    if (!(torrent = ht_get( ht, (unsigned char *)hash ))) {
+    torrent = ht_get(ht, (unsigned char *)hash);
+    if(!torrent) {
         fprintf(stderr, "(handshake) : cannot find the hash in the table\n");
         return -1;
     }
@@ -186,26 +188,29 @@ handshake(hashtable *ht , int fd)
     strncpy(tmp, "BitTorrent protocol", 19);
     tmp += 19;
 
-    tmp[0] = tmp[1] = tmp[2] = tmp[3] =
-        tmp[4] =tmp[5] =tmp[6] =tmp[7] = 0;
+    memset(tmp, 0, 8);
     tmp += 8;
 
     memcpy(tmp, torrent->info_hash, 20);
     tmp += 20;
 
     memcpy(tmp, peer_id, 20);
-    tmp = NULL;
-    if(cpc_full_write(fd, res, 68) < 68) {
+    tmp += 20;
+
+    rc = cpc_full_write(fd, res, 68);
+    if(rc < 68) {
         perror("(handshake)cannot write to fd");
         return -1;
     }
 
-    if(send_bitfield(fd, torrent)<0) {
+    rc = send_bitfield(fd, torrent);
+    if(rc < 0) {
         fprintf(stderr, "couldn't send bitfield\n");
         return -1;
     }
 
-    if(send_unchoke(fd)<0) {
+    rc = send_unchoke(fd);
+    if(rc < 0) {
         fprintf(stderr, "couldn't send unchoke\n");
         return -1;
     }
