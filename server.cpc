@@ -408,7 +408,6 @@ stream_reader(int fd)
         return -1;
     }
 
-    //i am not sure that this is a good idea
     printf("<- type = %d, length = %d\n", res[0], length);
     switch(res[0]) {
     case  7 : case  5 : case 0: case 4:
