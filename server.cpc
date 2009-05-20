@@ -528,37 +528,42 @@ listening(hashtable * table)
 
     memset(requests, 1024*sizeof(piece), 0);
 
+    rc = listen(socket_fd, 20);
+    if(rc < 0) {
+        perror("(listening)listen");
+        return;
+    }
+
     while(1) {
-        rc = listen(socket_fd, 20);
-        if(rc) perror("(listening)listen");
+        cli_len = sizeof(cli_addr);
 
-        while(1) {
-            cli_len = sizeof(cli_addr);
-
-            cpc_io_wait(socket_fd, CPC_IO_IN);
-            client_fd = accept(socket_fd,
-                               (struct sockaddr *) &cli_addr,
-                               &cli_len);
-            if(client_fd<0) {
-                perror("(listening)accept");
-                return;
-            }
-            fprintf(stderr,"Got a connection!\n");
-
-            flags = fcntl(client_fd, F_GETFL);
-            if(flags < 0)
-                goto fail;
-            rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
-            if(rc < 0)
-                goto fail;
-            cpc_spawn client(table, client_fd);
-            continue;
-
-        fail:
-            perror("(listening)fcntl");
-            close(client_fd);
-            continue;
+        cpc_io_wait(socket_fd, CPC_IO_IN);
+        client_fd = accept(socket_fd,
+                           (struct sockaddr *) &cli_addr,
+                           &cli_len);
+        if(client_fd<0) {
+            perror("(listening)accept");
+            return;
         }
+        fprintf(stderr,"Got a connection!\n");
+
+        flags = fcntl(client_fd, F_GETFL);
+        if(flags < 0) {
+            perror("F_GETFL");
+            goto fail;
+        }
+        rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
+        if(rc < 0) {
+            perror("F_SETFL");
+            goto fail;
+        }
+
+        cpc_spawn client(table, client_fd);
+        continue;
+
+    fail:
+        close(client_fd);
+        continue;
     }
 
     return;
