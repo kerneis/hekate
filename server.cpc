@@ -24,16 +24,28 @@
 flist requests[1024];
 
 cps int
-cpc_full_read(int fd, void *buf, int length)
+cpc_full_read(int fd, void *buf, int len)
 {
     int pos, rc;
 
-    for(pos = 0; pos < length; pos += rc) {
+    pos = 0;
+    while(pos < len) {
+        rc = read(fd, buf + pos, len - pos);
+        if(rc == 0) {
+            errno = EPIPE;
+            return -1;
+        } else if(rc < 0) {
+            if(errno != EAGAIN)
+                return -1;
+        } else {
+            pos += rc;
+            if(pos >= len)
+                break;
+        }
         cpc_io_wait(fd, CPC_IO_IN);
-        rc = read(fd, buf + pos, length - pos);
-        if(rc < 0 && errno != EAGAIN) return rc;
     }
-    return length;
+
+    return pos;
 }
 
 cps int
