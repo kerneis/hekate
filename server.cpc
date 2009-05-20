@@ -177,7 +177,7 @@ send_message_2(int fd, int id,
     unsigned char buf[5];
     int rc;
 
-    printf("-> type = %d, length = %d\n", id, bodylen1 + bodylen2);
+    printf("-> type = %d, length = %d\n", id, bodylen1 + bodylen2 + 1);
 
     *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
     buf[4] = id;
