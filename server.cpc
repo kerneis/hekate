@@ -479,13 +479,14 @@ client(hashtable *t, int client_fd)
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
-        fprintf(stderr,"(client)handshake: handshake is just like a footshake\n");
+        fprintf(stderr,"(client)broken handshake -- dropping.\n");
         goto done;
     }
 
-    while(1)
-        if(stream_reader(client_fd)<0)
+    while(1) {
+        if(stream_reader(client_fd) < 0)
             break;
+    }
 
  done:
     close(client_fd);
