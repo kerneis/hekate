@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -15,6 +16,8 @@
 #include "server.h"
 #include "sha1.h"
 #include "tracker_io.h"
+
+
 
 /*
   getting the directory path and try to add them all to our hashtable
@@ -107,6 +110,8 @@ main(int argc, char **argv)
 {
     hashtable *table;
     CURLcode global;
+    int fd, i;
+    unsigned char buf[6];
 
     while(1) {
         int opt;
@@ -124,6 +129,19 @@ main(int argc, char **argv)
 
     if(optind >= argc )
         goto usage;
+
+    strcpy(peer_id, "-CP0000-");
+    fd = open("/dev/urandom", O_RDONLY);
+    if(fd < 0) {
+        perror("open(random)");
+        exit(1);
+    }
+    read(fd, buf, 6);
+    for(i = 0; i < 6; i++)
+        snprintf(peer_id + 8 + 2 * i, 21 - (8 + 2 * i), "%02X",
+                 (buf[i] & 0xFF));
+    peer_id[20] = '\0';
+    close(fd);
 
     global = curl_global_init(CURL_GLOBAL_ALL);
     assert(!global);
