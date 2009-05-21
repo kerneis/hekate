@@ -382,6 +382,7 @@ stream_reader(int fd)
 {
     uint32_t tmp = 0, length = 0;
     char * res = NULL;
+    uint32_t begin, index, chunk_len;
 
     if(cpc_full_read(fd, &tmp, 4) < 4) {
         perror("(stream_read) didn't read 4 bytes");
@@ -425,33 +426,28 @@ stream_reader(int fd)
         goto fail;
 
     case 6:                     //request
-        printf("request: index = %d \tbegin = %d\tlength = %d\n",
-               ntohl(*((int32_t *)(res+1))),
-               ntohl(*((int32_t *)(res+5))),
-               ntohl(*((int32_t *)(res+9))));
+    case 8:                     //cancel
+        if(length < 13)
+            goto fail;
+        index = ntohl(*((uint32_t *)(res+1)));
+        begin = ntohl(*((uint32_t *)(res+5)));
+        chunk_len = ntohl(*((uint32_t *)(res+9)));
+        printf("%3d %s: index = %u\tbegin = %u\tlength = %u\n",
+               fd, res[0] == 6 ? "request" : "cancel",
+               index, begin, chunk_len);
 
-        /* add request in request list */
-        requests[fd].list = add_piece(requests[fd].list,
-                                      ntohl(*((int64_t *)(res + 1))),
-                                      ntohl(*((int32_t *)(res + 5))),
-                                      ntohl(*((int32_t *)(res + 9))));
-        if(requests[fd].flag == 0) {
-            requests[fd].flag = 1;
-            cpc_spawn stream_writer(fd);
+        if(res[0] == 6) {
+            /* add request in request list */
+            requests[fd].list = add_piece(requests[fd].list,
+                                          index, begin, chunk_len);
+            if(requests[fd].flag == 0) {
+                requests[fd].flag = 1;
+                cpc_spawn stream_writer(fd);
+            }
+        } else {
+            requests[fd].list = remove_piece(requests[fd].list,
+                                             index, begin, chunk_len);
         }
-        break;
-
-    case 8:                    //cancel
-        printf("cancel: index = %d \tbegin = %d\tlength = %d\n",
-               ntohl(*((int32_t *)(res + 1))),
-               ntohl(*((int32_t *)(res + 5))),
-               ntohl(*((int32_t *)(res + 9))));
-
-        requests[fd].list = remove_piece(requests[fd].list,
-                                         ntohl(*((int64_t *)(res+1))),
-                                         ntohl(*((int32_t *)(res+5))),
-                                         ntohl(*((int32_t *)(res+9))));
-
         break;
 
     default:
