@@ -19,9 +19,9 @@
 
 #define BUF_LEGNTH 512
 #define DIR_LEN 512
+#define FD_MAX 1024
 
-/*XXX 1024 -> FD_MAX*/
-flist requests[1024];
+flist requests[FD_MAX];
 
 cps int
 cpc_full_read(int fd, char *buf, int len)
@@ -462,6 +462,30 @@ stream_reader(int fd)
     return -1;
 }
 
+void free_list_piece(piece * p);
+
+void
+free_list_piece(piece * p){
+    if(!p)
+        return ;
+    else{
+        free_list_piece(p->next);
+        free(p);
+        return ;
+    }
+}
+
+
+void
+free_pieces(int fd)
+{
+    if(!requests[fd].list)
+        free_list_piece(requests[fd].list);
+
+    free(requests[fd].t);
+    return ;
+}
+
 cps void
 client(hashtable *t, int client_fd)
 {
@@ -480,6 +504,7 @@ client(hashtable *t, int client_fd)
     }
 
  done:
+    free_pieces(client_fd);
     close(client_fd);
     return;
 }
