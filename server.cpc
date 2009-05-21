@@ -177,7 +177,7 @@ send_message_2(int fd, int id,
     unsigned char buf[5];
     int rc;
 
-    printf("-> type = %d, length = %d\n", id, bodylen1 + bodylen2 + 1);
+    printf("%3d -> type = %d, length = %d\n", fd, id, bodylen1 + bodylen2 + 1);
 
     *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
     buf[4] = id;
@@ -269,7 +269,7 @@ send_piece(int fd, piece *chunk)
     source = requests[fd].t->map;
     source += chunk->offset*t->p_length+chunk->begin;
 
-    printf("send chunk %d: length=%d, offset=%lld\n",
+    printf("%3d send chunk: length=%d, offset=%lld\n",
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
@@ -395,7 +395,7 @@ stream_reader(int fd)
     }
 
     if(length > 128 * 1024) {
-        printf("Unbelievably long message (%d bytes).\n", length);
+        printf("%3d unbelievably long message (%d bytes).\n", fd, length);
         return -1;
     }
 
@@ -408,31 +408,20 @@ stream_reader(int fd)
         goto fail;
     }
 
-    printf("<- type = %d, length = %d\n", res[0], length);
+    printf("%3d <- type = %d, length = %d\n", fd, res[0], length);
 
     if(res[0] != 5 && length > 20) {
-        printf("Unbelievably long message!\n");
+        printf("%3d unbelievably long message!\n", fd);
         goto fail;
     }
 
     switch(res[0]) {
-    case 7: case 5: case 0: case 4:
-        break;
-    case 1:
-        //unchoke
-        //no payload
-        printf("unchoke\n");
-        break;
-
-    case 2:
-        //interested
-        //no payload
-        printf("interested\n");
+    case 7: case 5: case 0: case 4: case 1: case 2:
         break;
 
     case 3:
         //not interested
-        printf("not interested\n");
+        printf("%3d not interested\n", fd);
         goto fail;
 
     case 6:                     //request
@@ -466,7 +455,7 @@ stream_reader(int fd)
         break;
 
     default:
-        fprintf(stderr , "(stream_read)Someone sending weird message\n");
+        fprintf(stderr , "%3d unexpected message.\n", fd);
         goto fail;
     }
     free(res);
