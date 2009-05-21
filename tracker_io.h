@@ -6,7 +6,7 @@
 extern int notracker;
 
 char *port;
-char *peer_id;
+extern char peer_id[21];
 tr_list *trackers;
 
 void init_trackers();

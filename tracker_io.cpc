@@ -10,7 +10,7 @@
 
 #define TRACKER_TIMER 1800
 
-char *peer_id = "BittorrentSeeder-000"; /* XXX escape the peer_id somewhere */
+char peer_id[21];
 char *port = "6969";
 int notracker = 0;
 
