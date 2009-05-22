@@ -490,7 +490,6 @@ free_chunks(int fd)
 {
     free_chunk_list(requests[fd].list);
     requests[fd].list = NULL;
-    requests[fd].t = NULL;
     return ;
 }
 
@@ -526,6 +525,7 @@ client(hashtable *t, int client_fd)
         } while(requests[client_fd].stream_writer);
     }
     free_chunks(client_fd);
+    requests[client_fd].t = NULL;
     close(client_fd);
     return;
 }
