@@ -349,12 +349,6 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    rc = send_unchoke(fd);
-    if(rc < 0) {
-        fprintf(stderr, "couldn't send unchoke\n");
-        return -1;
-    }
-
     return 0;
 }
 
@@ -499,6 +493,12 @@ client(hashtable *t, int client_fd)
     if(rc < 0) {
         fprintf(stderr,"(client)broken handshake -- dropping.\n");
         goto done;
+    }
+
+    rc = send_unchoke(client_fd);
+    if(rc < 0) {
+        fprintf(stderr, "couldn't send unchoke\n");
+        return;
     }
 
     while(1) {
