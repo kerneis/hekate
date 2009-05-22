@@ -21,6 +21,11 @@
 #define DIR_LEN 512
 #define FD_MAX 1024
 
+int numpeers = 0;
+#define MAX_CONNECTED_PEERS 512
+
+#define MAX_PEER_CREDIT (1024 * 1024)
+
 struct peer peers[FD_MAX];
 
 cps int
@@ -267,6 +272,36 @@ send_chunk(int fd, struct chunk *chunk)
 
     assert(peers[fd].stream_writer);
 
+    if(chunk->length > MAX_PEER_CREDIT) {
+        fprintf(stderr, "Chunk larger than max credit!\n");
+        return -1;
+    }
+
+    if(peers[fd].credit < chunk->length) {
+        if(numpeers < 5) {
+            /* We've got very few peers, replenish. */
+            printf("%3d replenish\n", fd);
+            peers[fd].credit = MAX_PEER_CREDIT;
+        } else if(numpeers < MAX_CONNECTED_PEERS) {
+            /* Our queue is not full yet, choke this client for a small time. */
+            printf("%3d temporary choke\n", fd);
+            rc = send_choke(fd);
+            if(rc < 0)
+                return -1;
+            free_chunks(fd);
+            cpc_sleep(1);
+            rc = send_unchoke(fd);
+            if(rc < 0)
+                return -1;
+            peers[fd].credit = MAX_PEER_CREDIT;
+        } else {
+            /* Drop this client connection, so that others get a chance. */
+            printf("%3d dropping\n", fd);
+            shutdown(fd, 2);
+            return -1;
+        }
+    }
+
     if(!peers[fd].t->map) {
         file = open(t->path, O_RDONLY);
         if(file < 0){
@@ -297,6 +332,9 @@ send_chunk(int fd, struct chunk *chunk)
         perror("(send_chunk)write");
         return -1;
     }
+
+    peers[fd].credit -= chunk->length;
+    assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
 
     return 0;
 }
@@ -330,6 +368,7 @@ handshake(hashtable *ht , int fd)
     }
 
     peers[fd].t = torrent;
+    peers[fd].credit = MAX_PEER_CREDIT;
 
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
@@ -526,6 +565,7 @@ client(hashtable *t, int client_fd)
     }
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
+    numpeers--;
     close(client_fd);
     return;
 }
@@ -584,6 +624,12 @@ listening(hashtable * table)
         if(client_fd > FD_MAX)
             goto fail;
 
+        assert(numpeers >= 0 && numpeers <= MAX_CONNECTED_PEERS);
+        if(numpeers >= MAX_CONNECTED_PEERS) {
+            fprintf(stderr, "Dropping peer connection.\n");
+            goto fail;
+        }
+
         flags = fcntl(client_fd, F_GETFL);
         if(flags < 0) {
             perror("F_GETFL");
@@ -595,6 +641,7 @@ listening(hashtable * table)
             goto fail;
         }
 
+        numpeers++;
         cpc_spawn client(table, client_fd);
         continue;
 

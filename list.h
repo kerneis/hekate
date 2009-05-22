@@ -25,6 +25,7 @@ typedef struct chunk {
 typedef struct peer {
     int stream_writer;
     ht_torrent *t;
+    int credit;
     struct chunk *list;
 } peer;
 
