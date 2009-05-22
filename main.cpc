@@ -11,6 +11,7 @@
 
 #include <curl/curl.h>
 
+#include "util.h"
 #include "hashtable.h"
 #include "parse.h"
 #include "server.h"
