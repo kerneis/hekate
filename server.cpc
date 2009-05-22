@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+#include "util.h"
 #include "hashtable.h"
 #include "parse.h"
 #include "tracker_io.h"
@@ -27,8 +28,6 @@ int numpeers = 0;
 #define MAX_PEER_CREDIT (1024 * 1024)
 
 struct peer peers[FD_MAX];
-
-size_t pagesize;
 
 cps int
 cpc_full_read(int fd, char *buf, int len)

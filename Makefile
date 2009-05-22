@@ -12,7 +12,7 @@ LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.a -lm -
 
 all: main
 
-main: sha1.o list.o hashtable.o parse.o tracker_io.o server.o main.o
+main: sha1.o util.o list.o hashtable.o parse.o tracker_io.o server.o main.o
 
 clean:
 	rm -f *.o *~ *.cpi
