@@ -21,7 +21,7 @@
 #define DIR_LEN 512
 #define FD_MAX 1024
 
-struct peer requests[FD_MAX];
+struct peer peers[FD_MAX];
 
 cps int
 cpc_full_read(int fd, char *buf, int len)
@@ -263,26 +263,26 @@ send_chunk(int fd, struct chunk *chunk)
     int file, rc;
     unsigned char buf[8];
     void *source;
-    ht_torrent *t = requests[fd].t;
+    ht_torrent *t = peers[fd].t;
 
-    assert(requests[fd].stream_writer);
+    assert(peers[fd].stream_writer);
 
-    if(!requests[fd].t->map) {
+    if(!peers[fd].t->map) {
         file = open(t->path, O_RDONLY);
         if(file < 0){
             perror("(send_chunk)open");
             return -1;
         }
 
-        requests[fd].t->map = mmap(NULL, t->f_length, PROT_READ,
+        peers[fd].t->map = mmap(NULL, t->f_length, PROT_READ,
                                    MAP_PRIVATE, file, 0);
-        if(requests[fd].t->map == MAP_FAILED) {
+        if(peers[fd].t->map == MAP_FAILED) {
             perror("(send_chunk)mmap");
             return -1;
         }
     }
 
-    source = requests[fd].t->map;
+    source = peers[fd].t->map;
     source += chunk->offset*t->p_length+chunk->begin;
 
     printf("%3d send chunk: length=%d, offset=%lld\n",
@@ -329,7 +329,7 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    requests[fd].t = torrent;
+    peers[fd].t = torrent;
 
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
@@ -373,10 +373,10 @@ stream_writer(int fd)
     struct chunk *cl;
     int rc;
 
-    assert(requests[fd].stream_writer);
+    assert(peers[fd].stream_writer);
 
-    while((cl = requests[fd].list)) {
-        requests[fd].list = requests[fd].list->next;
+    while((cl = peers[fd].list)) {
+        peers[fd].list = peers[fd].list->next;
         rc = send_chunk(fd, cl);
         free(cl);
         if(rc < 0) {
@@ -385,7 +385,7 @@ stream_writer(int fd)
         }
         cpc_yield;
     }
-    requests[fd].stream_writer = 0;
+    peers[fd].stream_writer = 0;
     return;
 }
 
@@ -450,14 +450,14 @@ stream_reader(int fd)
 
         if(res[0] == 6) {
             /* add request in request list */
-            requests[fd].list = add_chunk(requests[fd].list,
+            peers[fd].list = add_chunk(peers[fd].list,
                                           index, begin, chunk_len);
-            if(requests[fd].stream_writer == 0) {
-                requests[fd].stream_writer = 1;
+            if(peers[fd].stream_writer == 0) {
+                peers[fd].stream_writer = 1;
                 cpc_spawn stream_writer(fd);
             }
         } else {
-            requests[fd].list = remove_chunk(requests[fd].list,
+            peers[fd].list = remove_chunk(peers[fd].list,
                                              index, begin, chunk_len);
         }
         break;
@@ -488,8 +488,8 @@ free_chunk_list(struct chunk* c) {
 void
 free_chunks(int fd)
 {
-    free_chunk_list(requests[fd].list);
-    requests[fd].list = NULL;
+    free_chunk_list(peers[fd].list);
+    peers[fd].list = NULL;
     return ;
 }
 
@@ -517,15 +517,15 @@ client(hashtable *t, int client_fd)
     }
 
  done:
-    if(requests[client_fd].stream_writer) {
+    if(peers[client_fd].stream_writer) {
         shutdown(client_fd, 2);
         /* XXX should use explicit signalling here. */
         do {
             cpc_yield;
-        } while(requests[client_fd].stream_writer);
+        } while(peers[client_fd].stream_writer);
     }
     free_chunks(client_fd);
-    requests[client_fd].t = NULL;
+    peers[client_fd].t = NULL;
     close(client_fd);
     return;
 }
@@ -557,7 +557,7 @@ listening(hashtable * table)
              sizeof(serv_addr)) < 0)
         perror("(listening)bind");
 
-    memset(requests, 1024*sizeof(struct peer), 0);
+    memset(peers, 1024*sizeof(struct peer), 0);
 
     rc = listen(socket_fd, 20);
     if(rc < 0) {
@@ -577,7 +577,7 @@ listening(hashtable * table)
             return;
         }
         fprintf(stderr,"Got a connection!\n");
-        assert(!requests[client_fd].t);
+        assert(!peers[client_fd].t);
 
         flags = fcntl(client_fd, F_GETFL);
         if(flags < 0) {
