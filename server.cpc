@@ -369,7 +369,7 @@ stream_writer(int fd)
         free(pl);
         if(rc < 0) {
             shutdown(fd, 2);    /* for now */
-            return;
+            break;
         }
         cpc_yield;
     }
