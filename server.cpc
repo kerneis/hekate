@@ -475,11 +475,11 @@ stream_reader(int fd)
 }
 
 void
-free_list_chunk(struct chunk* c){
+free_chunk_list(struct chunk* c) {
     if(!c)
         return ;
     else{
-        free_list_chunk(c->next);
+        free_chunk_list(c->next);
         free(c);
         return ;
     }
@@ -489,7 +489,7 @@ free_list_chunk(struct chunk* c){
 void
 free_chunks(int fd)
 {
-    free_list_chunk(requests[fd].list);
+    free_chunk_list(requests[fd].list);
     requests[fd].list = NULL;
     requests[fd].t = NULL;
     return ;
