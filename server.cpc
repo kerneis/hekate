@@ -546,7 +546,7 @@ listening(hashtable * table)
              sizeof(serv_addr)) < 0)
         perror("(listening)bind");
 
-    memset(requests, 1024*sizeof(piece), 0);
+    memset(requests, 1024*sizeof(struct peer), 0);
 
     rc = listen(socket_fd, 20);
     if(rc < 0) {
