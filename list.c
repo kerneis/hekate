@@ -41,24 +41,23 @@ tr_insert(ht_torrent *t, char *url)
     trackers = tmp;
 }
 
-piece*
-add_piece(piece *l, int64_t offset, int begin, int length)
+struct chunk*
+add_chunk(struct chunk *l, int64_t offset, int begin, int length)
 {
-    piece *p =  malloc(sizeof(piece));
+    struct chunk *c =  malloc(sizeof(struct chunk));
 
-    p->offset = offset;
-    p->begin  = begin;
-    p->length = length;
-    p->next = l;
+    c->offset = offset;
+    c->begin  = begin;
+    c->length = length;
+    c->next = l;
 
-    return p;
+    return c;
 }
 
-piece*
-remove_piece(piece *list, int offset, int begin, int length)
+struct chunk*
+remove_chunk(struct chunk* list, int offset, int begin, int length)
 {
-    piece *prec = NULL, *tmp = list;
-    piece * p;
+    struct chunk *prec = NULL, *tmp = list;
 
     if(!list)
         return NULL;

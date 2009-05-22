@@ -15,24 +15,22 @@ typedef struct tr_list{
     struct tr_list *next;
 } tr_list;
 
-typedef struct piece{
-    /* TO-DO: add a file field for multi-files torrents */
+typedef struct chunk {
     int64_t offset;
     int begin;
     int length;
-
-    struct piece *next;
-} piece;
+    struct chunk *next;
+} chunk;
 
 typedef struct peer {
     int stream_writer;
     ht_torrent *t;
-    piece *list;
+    struct chunk *list;
 } peer;
 
 
 void tr_insert(ht_torrent *t, char *url);
-piece * add_piece(piece *l, int64_t offset, int begin, int length);
-piece * remove_piece(piece *l, int offset, int begin, int length);
+struct chunk *add_chunk(struct chunk *l, int64_t offset, int begin, int length);
+struct chunk *remove_chunk(struct chunk *l, int offset, int begin, int length);
 
 #endif

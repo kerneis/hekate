@@ -244,7 +244,7 @@ send_unchoke(int fd)
 }
 
 cps int
-send_piece(int fd, piece *chunk)
+send_chunk(int fd, struct chunk *chunk)
 {
     int file, rc;
     unsigned char buf[8];
@@ -256,14 +256,14 @@ send_piece(int fd, piece *chunk)
     if(!requests[fd].t->map) {
         file = open(t->path, O_RDONLY);
         if(file < 0){
-            perror("(send_piece)open");
+            perror("(send_chunk)open");
             return -1;
         }
 
         requests[fd].t->map = mmap(NULL, t->f_length, PROT_READ,
                                    MAP_PRIVATE, file, 0);
         if(requests[fd].t->map == MAP_FAILED) {
-            perror("(send_piece)mmap source");
+            perror("(send_chunk)mmap");
             return -1;
         }
     }
@@ -280,7 +280,7 @@ send_piece(int fd, piece *chunk)
 
     rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
     if(rc < 0) {
-        perror("(send_piece)write");
+        perror("(send_chunk)write");
         return -1;
     }
 
@@ -356,15 +356,15 @@ cps void
 stream_writer(int fd)
 {
     //while request list non empty, send chunks
-    piece *pl;
+    struct chunk *cl;
     int rc;
 
     assert(requests[fd].stream_writer);
 
-    while((pl = requests[fd].list)) {
+    while((cl = requests[fd].list)) {
         requests[fd].list = requests[fd].list->next;
-        rc = send_piece(fd, pl);
-        free(pl);
+        rc = send_chunk(fd, cl);
+        free(cl);
         if(rc < 0) {
             shutdown(fd, 2);    /* for now */
             break;
@@ -436,14 +436,14 @@ stream_reader(int fd)
 
         if(res[0] == 6) {
             /* add request in request list */
-            requests[fd].list = add_piece(requests[fd].list,
+            requests[fd].list = add_chunk(requests[fd].list,
                                           index, begin, chunk_len);
             if(requests[fd].stream_writer == 0) {
                 requests[fd].stream_writer = 1;
                 cpc_spawn stream_writer(fd);
             }
         } else {
-            requests[fd].list = remove_piece(requests[fd].list,
+            requests[fd].list = remove_chunk(requests[fd].list,
                                              index, begin, chunk_len);
         }
         break;
@@ -460,24 +460,22 @@ stream_reader(int fd)
     return -1;
 }
 
-void free_list_piece(piece * p);
-
 void
-free_list_piece(piece * p){
-    if(!p)
+free_list_chunk(struct chunk* c){
+    if(!c)
         return ;
     else{
-        free_list_piece(p->next);
-        free(p);
+        free_list_chunk(c->next);
+        free(c);
         return ;
     }
 }
 
 
 void
-free_pieces(int fd)
+free_chunks(int fd)
 {
-    free_list_piece(requests[fd].list);
+    free_list_chunk(requests[fd].list);
     requests[fd].list = NULL;
     requests[fd].t = NULL;
     return ;
@@ -514,7 +512,7 @@ client(hashtable *t, int client_fd)
             cpc_yield;
         } while(requests[client_fd].stream_writer);
     }
-    free_pieces(client_fd);
+    free_chunks(client_fd);
     close(client_fd);
     return;
 }
