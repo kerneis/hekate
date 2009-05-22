@@ -28,6 +28,8 @@ int numpeers = 0;
 
 struct peer peers[FD_MAX];
 
+size_t pagesize;
+
 cps int
 cpc_full_read(int fd, char *buf, int len)
 {

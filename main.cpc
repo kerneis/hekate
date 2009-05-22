@@ -130,6 +130,8 @@ main(int argc, char **argv)
     if(optind >= argc )
         goto usage;
 
+    pagesize = getpagesize();
+
     strcpy(peer_id, "-CP0000-");
     fd = open("/dev/urandom", O_RDONLY);
     if(fd < 0) {
