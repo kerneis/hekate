@@ -25,7 +25,7 @@ typedef struct piece{
 } piece;
 
 typedef struct flist{
-    int flag; /* exist a stream_writer */
+    int stream_writer;
     ht_torrent *t;
     piece *list;
 } flist;
