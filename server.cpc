@@ -373,7 +373,7 @@ stream_writer(int fd)
         }
         cpc_yield;
     }
-    requests[fd].flag = 0;
+    requests[fd].stream_writer = 0;
     return;
 }
 
@@ -440,8 +440,8 @@ stream_reader(int fd)
             /* add request in request list */
             requests[fd].list = add_piece(requests[fd].list,
                                           index, begin, chunk_len);
-            if(requests[fd].flag == 0) {
-                requests[fd].flag = 1;
+            if(requests[fd].stream_writer == 0) {
+                requests[fd].stream_writer = 1;
                 cpc_spawn stream_writer(fd);
             }
         } else {
