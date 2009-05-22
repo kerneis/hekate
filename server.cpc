@@ -251,6 +251,8 @@ send_piece(int fd, piece *chunk)
     void *source;
     ht_torrent *t = requests[fd].t;
 
+    assert(requests[fd].stream_writer);
+
     if(!requests[fd].t->map) {
         file = open(t->path, O_RDONLY);
         if(file < 0){
@@ -362,6 +364,8 @@ stream_writer(int fd)
     //while request list non empty, send chunks
     piece *pl;
     int rc;
+
+    assert(requests[fd].stream_writer);
 
     while((pl = requests[fd].list)) {
         requests[fd].list = requests[fd].list->next;
@@ -562,6 +566,7 @@ listening(hashtable * table)
             return;
         }
         fprintf(stderr,"Got a connection!\n");
+        assert(!requests[client_fd].t);
 
         flags = fcntl(client_fd, F_GETFL);
         if(flags < 0) {
