@@ -506,6 +506,13 @@ client(hashtable *t, int client_fd)
     }
 
  done:
+    if(requests[client_fd].stream_writer) {
+        shutdown(client_fd, 2);
+        /* XXX should use explicit signalling here. */
+        do {
+            cpc_yield;
+        } while(requests[client_fd].stream_writer);
+    }
     free_pieces(client_fd);
     close(client_fd);
     return;
