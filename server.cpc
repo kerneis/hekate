@@ -471,8 +471,7 @@ stream_reader(int fd)
     case 7: case 5: case 0: case 4: case 1: case 2:
         break;
 
-    case 3:
-        //not interested
+    case 3:                     //not interested
         printf("%3d not interested\n", fd);
         goto fail;
 
