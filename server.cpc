@@ -317,6 +317,11 @@ send_chunk(int fd, struct chunk *chunk)
         }
     }
 
+    if(chunk->offset * t->p_length + chunk->begin > t->f_length) {
+        fprintf(stderr, "%03d chunk beyond end of file -- dropping.\n", fd);
+        return -1;
+    }
+
     source = peers[fd].t->map;
     source += chunk->offset*t->p_length+chunk->begin;
 
