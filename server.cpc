@@ -574,7 +574,8 @@ listening(hashtable * table)
                            &cli_len);
         if(client_fd<0) {
             perror("(listening)accept");
-            return;
+            cpc_sleep(1);
+            continue;
         }
         fprintf(stderr,"Got a connection!\n");
         assert(!peers[client_fd].t);
