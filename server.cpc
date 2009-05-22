@@ -278,7 +278,7 @@ send_chunk(int fd, struct chunk *chunk)
     }
 
     if(peers[fd].credit < chunk->length) {
-        if(numpeers < 5) {
+        if(numpeers <= 1 + MAX_CONNECTED_PEERS / 10) {
             /* We've got very few peers, replenish. */
             printf("%3d replenish\n", fd);
             peers[fd].credit = MAX_PEER_CREDIT;
