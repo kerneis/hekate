@@ -481,10 +481,7 @@ free_pieces(int fd)
 {
     free_list_piece(requests[fd].list);
     requests[fd].list = NULL;
-
-    free(requests[fd].t);
     requests[fd].t = NULL;
-
     return ;
 }
 
