@@ -476,12 +476,11 @@ stream_reader(int fd)
 
 void
 free_chunk_list(struct chunk* c) {
-    if(!c)
-        return ;
-    else{
-        free_chunk_list(c->next);
+    struct chunk *next;
+    while(c) {
+        next = c->next;
         free(c);
-        return ;
+        c = next;
     }
 }
 
