@@ -501,6 +501,19 @@ stream_reader(int fd)
             /* add request in request list */
             peers[fd].list = add_chunk(peers[fd].list,
                                           index, begin, chunk_len);
+            if(peers[fd].t->map) {
+                size_t b = index * peers[fd].t->p_length + begin;
+                size_t br = b / pagesize * pagesize;
+                size_t l = chunk_len + (b - br);
+                size_t lr = (l + (pagesize - 1)) / pagesize * pagesize;
+                if(begin < 0 || l < 0 || l > peers[fd].t->f_length) {
+                    fprintf(stderr, "Unbelievable chunk request.\n");
+                    goto fail;
+                }
+                posix_madvise(peers[fd].t->map + br,
+                              chunk_len + (b - br),
+                              POSIX_MADV_WILLNEED);
+            }
             if(peers[fd].stream_writer == 0) {
                 peers[fd].stream_writer = 1;
                 cpc_spawn stream_writer(fd);
