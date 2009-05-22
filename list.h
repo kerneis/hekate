@@ -24,11 +24,11 @@ typedef struct piece{
     struct piece *next;
 } piece;
 
-typedef struct flist{
+typedef struct peer {
     int stream_writer;
     ht_torrent *t;
     piece *list;
-} flist;
+} peer;
 
 
 void tr_insert(ht_torrent *t, char *url);

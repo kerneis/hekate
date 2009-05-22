@@ -21,7 +21,7 @@
 #define DIR_LEN 512
 #define FD_MAX 1024
 
-flist requests[FD_MAX];
+struct peer requests[FD_MAX];
 
 cps int
 cpc_full_read(int fd, char *buf, int len)
