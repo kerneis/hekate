@@ -490,6 +490,10 @@ stream_reader(int fd)
         printf("%3d %s: index = %u\tbegin = %u\tlength = %u\n",
                fd, res[0] == 6 ? "request" : "cancel",
                index, begin, chunk_len);
+        if(chunk_len > 1024 * 1024) {
+            fprintf(stderr, "Unbelievably large chunk size requested.\n");
+            goto fail;
+        }
 
         if(res[0] == 6) {
             /* add request in request list */
