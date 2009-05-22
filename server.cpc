@@ -479,10 +479,12 @@ free_list_piece(piece * p){
 void
 free_pieces(int fd)
 {
-    if(!requests[fd].list)
-        free_list_piece(requests[fd].list);
+    free_list_piece(requests[fd].list);
+    requests[fd].list = NULL;
 
     free(requests[fd].t);
+    requests[fd].t = NULL;
+
     return ;
 }
 
