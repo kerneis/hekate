@@ -62,7 +62,7 @@ remove_chunk(struct chunk* list, int offset, int begin, int length)
     if(!list)
         return NULL;
 
-    while(!tmp){
+    while(tmp){
         if(tmp -> offset == offset &&
            tmp -> begin  == begin &&
            tmp -> length == length){
