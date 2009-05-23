@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 #include "hashtable.h"
 #include "list.h"
-#include "tracker_io.h"
+#include "tracker.h"
 
 #define TRACKER_TIMER 1800
 
