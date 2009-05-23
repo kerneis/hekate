@@ -333,6 +333,12 @@ send_chunk(int fd, struct chunk *chunk)
     *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
     *((uint32_t *)(buf + 4)) = htonl(chunk->begin);
 
+    if(!incore(source, chunk->length))
+        /* Since we prefetch when we first get a request, this chunk should
+           arrive into core soon.  Yield in order to give it a chance. */
+        /* Another strategy would be to detach if the data is not in core. */
+        cpc_yield;
+
     rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
     if(rc < 0) {
         perror("(send_chunk)write");
