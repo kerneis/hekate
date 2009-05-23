@@ -32,7 +32,8 @@ struct peer peers[FD_MAX];
 cps int
 cpc_full_read(int fd, char *buf, int len)
 {
-    int pos, rc;
+    size_t pos;
+    ssize_t rc;
 
     pos = 0;
     while(1) {
@@ -57,7 +58,8 @@ cpc_full_read(int fd, char *buf, int len)
 cps int
 cpc_full_write(int fd, const char *buf, int len)
 {
-    int pos, rc;
+    size_t pos;
+    ssize_t rc;
 
     pos = 0;
     while(1) {
