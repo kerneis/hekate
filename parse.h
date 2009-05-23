@@ -19,12 +19,12 @@ typedef struct benc benc;
 struct benc {
   benc_type type;
   unsigned char hash[20];
+  int size;
   union {
     int64_t i;
     char *s;
     struct {
       benc **l;
-      int size;
       int used;
     } set;
   };

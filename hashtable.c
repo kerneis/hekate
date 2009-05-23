@@ -46,7 +46,7 @@ ht_insert(hashtable *ht, ht_torrent *hte)
 }
 
 
-void*
+ht_torrent *
 ht_get(hashtable *ht, unsigned char *key)
 {
     uint32_t h = hash(key, ht->size);
@@ -59,17 +59,114 @@ ht_get(hashtable *ht, unsigned char *key)
     return NULL;
 }
 
+int
+ht_concat_path(struct file *f, char *curr_path, benc *l)
+{
+    int i, pos, size;
+    char *path, *tmp_path;
+
+    pos = strlen(curr_path);
+    size = (pos + 1) > 256 ? (pos + 1) : 256;
+    path = malloc(size);
+    if(!path) {
+        perror("(ht_concat_path)malloc");
+        return -1;
+    }
+    memcpy(path, curr_path, pos);
+
+    for(i = 0; i < l->size; i++) {
+        if(l->set.l[i]->type != STRING) {
+            free(path);
+            return -2;
+        }
+
+        path[pos++] = '/';
+        while(pos + l->set.l[i]->size > size) {
+            size *= 2;
+            tmp_path = realloc(path, size);
+            if(!tmp_path) {
+                perror("(ht_concat_path)realloc");
+                free(path);
+                return -1;
+            }
+        }
+        memcpy(path + pos, l->set.l[i]->s, l->set.l[i]->size);
+        pos += l->set.l[i]->size;
+    }
+    path[pos++] = '\0';
+    path = realloc(path, pos);
+
+    f->path = path;
+    return 0;
+}
+
+int
+ht_files_load(ht_torrent *elmt, char *curr_path, benc *raw)
+{
+    int i, j, c, rc;
+    int64_t offset;
+    benc *dico;
+    struct file *f;
+
+    offset = 0;
+    for(i=0; i<raw->size; i++) {
+        dico = raw->set.l[i];
+        if(dico->type != DICT) return -2;
+
+        f = malloc(sizeof(struct file));
+        if(!f) {
+            perror("(ht_files_load)malloc");
+            return -1;
+        }
+
+        f->offset = offset;
+        f->map = NULL;
+
+        c = 0;
+        for(j=0; j<dico->size; j+=2) {
+            if((dico->set.l[j])->type != STRING) {
+                return -2;
+            }
+
+            switch(c) {
+            case 0:
+                if(strcmp((dico->set.l[j])->s, "length") == 0 &&
+                   (dico->set.l[j+1])->type == INT) {
+                    f->length = dico->set.l[j+1]->i;
+                    c = 1;
+                }
+                break;
+
+            case 1:
+                if(strcmp((dico->set.l[j])->s, "path") == 0 &&
+                   (dico->set.l[j+1])->type == LIST) {
+                    rc = ht_concat_path(f, curr_path, dico->set.l[j+1]);
+                    if(rc<0) return rc;
+                    c = 2;
+                }
+                break;
+
+            default:
+                j = dico->size;
+            }
+        }
+
+        offset += f->length;
+        elmt->files[i] = f;
+    }
+    return 0;
+}
+
 
 int
 ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
 {
-    int i, c, path_length;
-    char *path;
-    /* int64_t j, chunks_num;
-       chunk *chunk; */
+    int i, c, rc, path_length;
+    char *path = NULL;
+    benc *multi_files = NULL;
 
     c=0; /* Use the fact that dictionnary are sorted */
-    for(i=0; i<raw->set.used; i+=2) {
+    for(i=0; i<raw->size; i+=2) {
 
         if((raw->set.l[i])->type != STRING) {
             return -2;
@@ -77,31 +174,43 @@ ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
 
         switch(c){
         case 0:
+            /* single file case */
             if(strcmp((raw->set.l[i])->s, "length") == 0 &&
                (raw->set.l[i+1])->type == INT) {
-                elmt->f_length = (raw->set.l[i+1])->i;
-                c++;
-            }
-            if(strcmp((raw->set.l[i])->s, "files") == 0) {
-                benc *dict = raw->set.l[i+1]->set.l[0];
-                elmt->f_length = dict->set.l[1]->i;
-                char *s = dict->set.l[3]->set.l[0]->s;
-                path_length = strlen(s) + strlen(curr_path) + 2;
-                path = malloc(path_length);
-                if(!path) {
-                    perror("(ht_info_load)malloc");
+                elmt->files = malloc(sizeof(struct file *));
+                if(!elmt->files){
+                    perror("(ht_info_load)malloc files");
                     return -1;
                 }
-                snprintf(path, path_length, "%s/%s",
-                         curr_path, s);
-                elmt->path = path;
-                c=2;
+                elmt->files[0] = calloc(1, sizeof(struct file));
+                if(!elmt->files[0]){
+                    perror("(ht_info_load)malloc files");
+                    return -1;
+                }
+
+                elmt->num_files = 1;
+                elmt->files[0]->length = raw->set.l[i+1]->i;
+                c = 1;
+            }
+            /* multi files case */
+            if(strcmp((raw->set.l[i])->s, "files") == 0 &&
+               (raw->set.l[i+1])->type == LIST) {
+                elmt->num_files = raw->set.l[i+1]->size;
+                elmt->files = calloc(elmt->num_files, sizeof(struct file *));
+                if(!elmt->files){
+                    perror("(ht_info_load)malloc files");
+                    return -1;
+                }
+                /* we need to know p_length */
+                multi_files = raw->set.l[i+1];
+                c = 1;
             }
             break;
+
         case 1:
             if(strcmp((raw->set.l[i])->s, "name") == 0 &&
                (raw->set.l[i+1])->type == STRING) {
-                path_length = strlen(raw->set.l[i+1]->s) + strlen(curr_path) + 2;
+                path_length = raw->set.l[i+1]->size + strlen(curr_path) + 2;
                 path = malloc(path_length);
                 if(!path) {
                     perror("(ht_info_load)malloc");
@@ -109,8 +218,13 @@ ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
                 }
                 snprintf(path, path_length, "%s/%s",
                          curr_path, (raw->set.l[i+1])->s);
-                elmt->path = path;
-                c++;
+
+                /* in single file case: name of the only file */
+                if(!multi_files) {
+                    elmt->files[0]->path = path;
+                }
+                /* in multi files case: path will be the recommended path */
+                c = 2;
             }
             break;
 
@@ -118,28 +232,37 @@ ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
             if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
                (raw->set.l[i+1])->type == INT) {
                 elmt->p_length = (raw->set.l[i+1])->i;
-                c++;
+
+                /* now we can compute chunks offsets */
+                if(multi_files) {
+                    rc = ht_files_load(elmt, path, multi_files);
+                    free(path);
+                    if(rc<0) return rc;
+                }
+                c = 3;
             }
             break;
 
         case 3:
-            /* TODO: multiple files case */
             if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
                (raw->set.l[i+1])->type == STRING) {
-                c++;
+                elmt->num_chunks = raw->set.l[i+1]->size/20;
+                c = 4;
             }
             break;
 
         default:
-            return 0;
+            i = raw->size; /* leave loop */
         }
     }
+    if(c<4) return -2;
     return 0;
 }
 
 int
 ht_load(hashtable *table, char *curr_path, benc *raw)
 {
+    /* XXX free correctement en cas d'erreur... */
     int i, c, rc;
     ht_torrent *elmt;
     char *url = NULL;
@@ -150,7 +273,6 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
         free_benc(raw);
         return -1;
     }
-    elmt->map = NULL;
 
     if(raw->type != DICT) {
         free_benc(raw);
@@ -158,8 +280,9 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
     }
 
     c=0; /* Use the fact that dictionnary are sorted */
-    for(i=0; i<raw->set.used; i+=2) {
+    for(i=0; i<raw->size; i+=2) {
         if((raw->set.l[i])->type != STRING) {
+            if(url) free(url);
             free_benc(raw);
             return -2;
         }
@@ -179,6 +302,7 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
                (raw->set.l[i+1])->type == DICT ) {
                 rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]);
                 if(rc < 0) {
+                    free(url);
                     free_benc(raw);
                     return rc;
                 }
@@ -187,13 +311,12 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
             break;
 
         default:
-            i = raw->set.used; /* leave loop */
+            i = raw->size; /* leave loop */
         }
     }
 
     /* was the .torrent complete? */
-    if(!url || !(elmt->path) ||
-       !(elmt->f_length) || !(elmt->p_length)) {
+    if(c<2) {
         free_benc(raw);
         return -2;
     }

@@ -3,23 +3,25 @@
 
 #include "parse.h"
 
-typedef struct ht_torrent{
+struct file {
+    int64_t offset;
+    int64_t length;
+    char *path;
+    char *map;
+};
+
+typedef struct ht_torrent {
     /* hashtable fields */
     unsigned char key[20];
     struct ht_torrent *next;
 
-    /* file path */
-    char *path;
-
-    /* length of the file in bits */
-    int64_t f_length;
-
     /* pieces size in bytes */
     int64_t p_length;
+    int32_t num_chunks;
 
+    int num_files;
+    struct file **files;
     unsigned char *info_hash;
-
-    void *map;
 } ht_torrent;
 
 typedef struct hashtable{
@@ -30,7 +32,7 @@ typedef struct hashtable{
 
 hashtable * ht_create(int size);
 unsigned char * ht_insert(hashtable *ht, ht_torrent *hte);
-void * ht_get(hashtable *ht, unsigned char *key);
+ht_torrent * ht_get(hashtable *ht, unsigned char *key);
 
 int ht_load(hashtable *table, char *curr_path, benc *raw);
 int ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw);

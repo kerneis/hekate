@@ -88,10 +88,6 @@ upload(hashtable *table, char * path)
                     free(curr_path);
                     continue;
                 }
-                elmt = ht_get(table, tmp);
-                printf("path: %s\n", elmt->path);
-                printf("file length: %lld\n", (long long int)elmt->f_length);
-                printf("chunk size: %lld\n", (long long int)elmt->p_length);
 
                 close_buffer(buf);
             }
