@@ -180,9 +180,6 @@ send_message_2(int fd, int id,
 cps int
 send_message(int fd, int id, char *body, int bodylen)
 {
-    unsigned char buf[5];
-    int rc;
-
     return send_message_2(fd, id, body, bodylen, NULL, 0);
 }
 
