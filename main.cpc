@@ -39,7 +39,7 @@ THE SOFTWARE.
 #include "parse.h"
 #include "server.h"
 #include "sha1.h"
-#include "tracker_io.h"
+#include "tracker.h"
 
 
 

@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "list.h"
 #include "parse.h"
 #include "hashtable.h"
-#include "tracker_io.h"
+#include "tracker.h"
 
 void
 tr_insert(ht_torrent *t, char *url)
