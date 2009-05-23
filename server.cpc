@@ -219,7 +219,7 @@ send_message_h(int fd, char *head, int headlen,
 }
 
 cps int
-send_bitfield(int fd, ht_torrent *t)
+send_bitfield(int fd, ht_torrent *t, char *head, int headlen)
 {
     int num_chunks = 0, length = 0;
     unsigned char *buf= NULL;
@@ -240,7 +240,7 @@ send_bitfield(int fd, ht_torrent *t)
     else
         buf[length - 1] = (0xFF00 >> (num_chunks % 8)) & 0xFF;
 
-    rc = send_message(fd, 5, buf, length);
+    rc = send_message_h(fd, head, headlen, 5, buf, length);
     if(rc < 0) {
         perror("(send_bitfield)cpc_message");
         return -1;
@@ -416,13 +416,7 @@ handshake(hashtable *ht , int fd)
     memcpy(tmp, peer_id, 20);
     tmp += 20;
 
-    rc = cpc_full_write(fd, res, 68);
-    if(rc < 68) {
-        perror("(handshake)cannot write to fd");
-        return -1;
-    }
-
-    rc = send_bitfield(fd, torrent);
+    rc = send_bitfield(fd, torrent, res, 68);
     if(rc < 0) {
         fprintf(stderr, "couldn't send bitfield\n");
         return -1;
