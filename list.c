@@ -49,9 +49,17 @@ add_chunk(struct chunk *l, int64_t offset, int begin, int length)
     c->offset = offset;
     c->begin  = begin;
     c->length = length;
-    c->next = l;
+    c->next = NULL;
 
-    return c;
+    if(!l)
+        return c;
+    else {
+        struct chunk *ll = l;
+        while(ll->next)
+            ll = ll->next;
+        ll->next = c;
+        return l;
+    }
 }
 
 struct chunk*
