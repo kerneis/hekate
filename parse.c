@@ -29,7 +29,7 @@ make_benc(benc_type type)
          case LIST:
          case DICT:
             r->set.l = malloc(SET_BASE_SIZE*sizeof(benc *));
-            r->set.size = SET_BASE_SIZE;
+            r->size = SET_BASE_SIZE;
             r->set.used = 0;
     }
     return r;
@@ -39,9 +39,9 @@ inline void
 add_set (benc *b, benc *obj)
 {
     assert(b->type == LIST || b->type == DICT);
-    if(b->set.size == b->set.used) {
-        b->set.l = realloc(b->set.l, 2*b->set.size*sizeof(benc *));
-        b->set.size *= 2;
+    if(b->size == b->set.used) {
+        b->set.l = realloc(b->set.l, 2*b->size*sizeof(benc *));
+        b->size *= 2;
     }
     b->set.l[b->set.used] = obj;
     b->set.used++;
@@ -172,6 +172,7 @@ parse_list (buffer *b, benc *r)
 
     while((tmp = parsing(b)) != NULL)
         add_set(r, tmp);
+    r->size = r->set.used;
 }
 
 /*cps*/ void
@@ -190,6 +191,7 @@ parse_dict (buffer *b, benc *r)
             value = parsing(b);
         add_set(r,value);
     }
+    r->size = r->set.used;
 }
 
 /*cps*/ benc *
@@ -229,6 +231,7 @@ parsing(buffer *b)
             }
             r = make_benc(STRING);
             n = parse_int(b,c,':');
+            r->size = n;
             r->s = get_string(b,n);
             /* printf("string of length %lld\n", (long long int)n); */
     }

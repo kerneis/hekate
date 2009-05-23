@@ -228,8 +228,7 @@ send_bitfield(int fd, ht_torrent *t, char *head, int headlen)
     unsigned char *buf= NULL;
     int rc;
 
-    num_chunks = (t->f_length - 1) / t->p_length + 1;
-    length = (num_chunks - 1) / 8 + 1;
+    length = (t->num_chunks - 1) / 8 + 1;
 
     buf = malloc(length);
     if(!buf) {
@@ -320,27 +319,27 @@ send_chunk(int fd, struct chunk *chunk)
         }
     }
 
-    if(!peers[fd].t->map) {
-        file = open(t->path, O_RDONLY);
+    if(!peers[fd].t->files[0]->map) {
+        file = open(t->files[0]->path, O_RDONLY);
         if(file < 0){
             perror("(send_chunk)open");
             return -1;
         }
 
-        peers[fd].t->map = mmap(NULL, t->f_length, PROT_READ,
-                                   MAP_PRIVATE, file, 0);
-        if(peers[fd].t->map == MAP_FAILED) {
+        peers[fd].t->files[0]->map = mmap(NULL, t->files[0]->length, PROT_READ,
+                                          MAP_PRIVATE, file, 0);
+        if(peers[fd].t->files[0]->map == MAP_FAILED) {
             perror("(send_chunk)mmap");
             return -1;
         }
     }
 
-    if(chunk->offset * t->p_length + chunk->begin > t->f_length) {
+    if(chunk->offset * t->p_length + chunk->begin > t->files[0]->length) {
         fprintf(stderr, "%03d chunk beyond end of file -- dropping.\n", fd);
         return -1;
     }
 
-    source = peers[fd].t->map;
+    source = peers[fd].t->files[0]->map;
     source += chunk->offset*t->p_length+chunk->begin;
 
     printf("%3d send chunk: length=%d, offset=%lld\n",
@@ -515,8 +514,8 @@ stream_reader(int fd)
             /* add request in request list */
             peers[fd].list = add_chunk(peers[fd].list,
                                           index, begin, chunk_len);
-            if(peers[fd].t->map)
-                prefetch(peers[fd].t->map +
+            if(peers[fd].t->files[0]->map)
+                prefetch(peers[fd].t->files[0]->map +
                          index * peers[fd].t->p_length + begin,
                          chunk_len);
             if(peers[fd].stream_writer == 0) {
