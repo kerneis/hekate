@@ -180,6 +180,45 @@ send_message(int fd, int id, char *body, int bodylen)
 }
 
 cps int
+send_message_h(int fd, char *head, int headlen,
+               int id, char *body, int bodylen)
+{
+    unsigned char buf[5];
+    struct iovec iov[3];
+    int i, rc;
+
+    printf("%3d -> h=%d, type = %d, length = %d\n",
+           fd, headlen, id, bodylen + 1);
+
+    *(uint32_t*)buf = htonl(bodylen + 1);
+    buf[4] = id;
+
+    i = 0;
+
+    if(headlen > 0) {
+        iov[i].iov_base = head;
+        iov[i].iov_len = headlen;
+        i++;
+    }
+
+    iov[i].iov_base = buf;
+    iov[i].iov_len = 5;
+    i++;
+
+    if(bodylen > 0) {
+        iov[i].iov_base = body;
+        iov[i].iov_len = bodylen;
+        i++;
+    }
+
+    rc = cpc_full_writev(fd, iov, i);
+    if(rc < 5)
+        return -1;
+
+    return 1;
+}
+
+cps int
 send_bitfield(int fd, ht_torrent *t)
 {
     int num_chunks = 0, length = 0;
