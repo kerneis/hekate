@@ -108,12 +108,19 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
             }
             assert(i < iovcnt);
 
-            if(pos == s) {
-                rc = writev(fd, iov + i, iovcnt - i);
-            } else {
-                /* In principle, we should build a new iovec here. */
+            if(i == iovcnt - 1) {
                 rc = write(fd, (char*)iov[i].iov_base + (pos - s),
                            iov[i].iov_len - (pos - s));
+            } else if(pos == s) {
+                rc = writev(fd, iov + i, iovcnt - i);
+            } else {
+                struct iovec newiov[8];
+                int j;
+                newiov[0].iov_base = (char*)iov[i].iov_base + (pos - s);
+                newiov[0].iov_len = iov[i].iov_len - (pos - s);
+                for(j = 1; j < iovcnt - i; j++)
+                    newiov[j] = iov[j + i];
+                rc = writev(fd, newiov, j);
             }
         }
 
