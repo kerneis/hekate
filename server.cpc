@@ -140,8 +140,7 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
 
 cps int
 send_message_2(int fd, int id,
-               char *body1, int bodylen1,
-               char *body2, int bodylen2)
+               char *body1, int bodylen1, char *body2, int bodylen2)
 {
     unsigned char buf[5];
     struct iovec iov[3];
