@@ -76,6 +76,7 @@ connection(tr_list *t, int timer)
     CURL *e_handle = NULL;
     char *request = NULL;
     to_list *current = NULL;
+    long http_code;
 
     cpc_sleep(timer);
 
@@ -85,7 +86,7 @@ connection(tr_list *t, int timer)
     };
 
     e_handle = curl_easy_init();
-    if(!e_handle) goto curl_error;
+    if(!e_handle) goto fail;
 
     for(current = t->head; current; current  = current -> next) {
         request = generate_get(t->url, current->elmt, "started", e_handle);
@@ -108,9 +109,25 @@ connection(tr_list *t, int timer)
         cpc_detach;
         rc = curl_easy_perform(e_handle);
         cpc_attach;
-        if(!rc) goto curl_error;
+        if(rc != CURLE_OK) goto curl_error;
+
+        rc = curl_easy_getinfo(e_handle, CURLINFO_RESPONSE_CODE, &http_code);
+        if(rc != CURLE_OK) goto curl_error;
+        if(http_code != 200) {
+            fprintf(stderr, "Warning: tracker returned %ld (%s).\n",
+                    http_code, request);
+        }
 
         free(request);
+        continue;
+
+    curl_error:
+        fprintf(stderr, "curl error: %s (%s)\n",
+                curl_easy_strerror(rc), request);
+        free(request);
+        curl_easy_cleanup(e_handle);
+        e_handle = curl_easy_init();
+        if(!e_handle) goto fail;
     }
 
     curl_easy_cleanup(e_handle);
@@ -118,10 +135,9 @@ connection(tr_list *t, int timer)
     cpc_spawn connection(t, TRACKER_TIMER);
     return;
 
- curl_error:
-    fprintf(stderr, "curl error: %s\n", curl_easy_strerror(rc));
-    curl_easy_strerror(rc);
-    exit(EXIT_FAILURE);
+ fail:
+    fprintf(stderr, "Couldn't allocate CURL request.\n");
+    cpc_spawn connection(t, TRACKER_TIMER);
 }
 
 void
