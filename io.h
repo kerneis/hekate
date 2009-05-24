@@ -20,3 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+cps int cpc_full_read(int fd, char *buf, int len);
+cps int cpc_full_write(int fd, const char *buf, int len);
+cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
