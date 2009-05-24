@@ -66,6 +66,9 @@ writer(void  *ptr, size_t size, size_t nmemb, void *stream)
     return 0;
 }
 
+/* This works around a bug in CPC. */
+cps void connection(tr_list *t, int timer);
+
 cps void
 connection(tr_list *t, int timer)
 {
@@ -107,8 +110,7 @@ connection(tr_list *t, int timer)
 
     curl_easy_cleanup(e_handle);
 
-    cpc_spawn(t, TRACKER_TIMER);
-
+    cpc_spawn connection(t, TRACKER_TIMER);
     return;
 
  curl_error:
