@@ -41,7 +41,7 @@ THE SOFTWARE.
 
 #define SERVER_PORT 6969
 
-#define BUF_LEGNTH 512
+#define BUF_LENGTH 512
 #define DIR_LEN 512
 #define FD_MAX 1024
 
@@ -575,7 +575,7 @@ cps void
 client(hashtable *t, int client_fd)
 {
     int rc = 0;
-    unsigned char buffer[BUF_LEGNTH];
+    unsigned char buffer[BUF_LENGTH];
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
