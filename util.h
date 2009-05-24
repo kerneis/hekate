@@ -25,4 +25,8 @@ extern size_t pagesize;
 
 int prefetch(void *begin, size_t length);
 int incore(void *begin, size_t length);
-
+int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
+                       struct sockaddr *src, socklen_t *src_len);
+int get_name_source_address(const char *name, int af,
+                            struct sockaddr *src, socklen_t *src_len);
+int global_unicast_address(struct sockaddr *sa);
