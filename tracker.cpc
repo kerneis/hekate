@@ -63,7 +63,7 @@ generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
 size_t
 writer(void  *ptr, size_t size, size_t nmemb, void *stream)
 {
-    return 0;
+    return nmemb;
 }
 
 /* This works around a bug in CPC. */
