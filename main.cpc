@@ -47,7 +47,7 @@ THE SOFTWARE.
   getting the directory path and try to add them all to our hashtable
 */
 void
-upload(hashtable *table, char * path)
+upload(hashtable *table, char *path)
 {
     DIR *dir;
     int res, pos, length;
@@ -176,7 +176,11 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    upload(table, argv[optind]);
+    if(optind >= argc)
+        goto usage;
+
+    for(i = optind; i < argc; i++)
+        upload(table, argv[i]);
 
     init_trackers(trackers);
 
