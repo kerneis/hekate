@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include "hashtable.h"
 #include "list.h"
@@ -42,22 +43,33 @@ int notracker = 0;
 char *
 generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
 {
-    int length, rc;
+    int length, rc, have_ipv6;
     char *res, *hash;
+    char ipv6[INET6_ADDRSTRLEN];
+    char *ipv6_escaped = NULL;
 
     hash = curl_easy_escape(e_handler, (char *)t->info_hash, 20);
     if(!hash) {
         fprintf(stderr, "Error (generate_get) : curl_easy_escape\n");
         return NULL;
     }
+
+    rc = find_global_address(AF_INET6, ipv6, sizeof(ipv6));
+    if(rc >= 0)
+        ipv6_escaped = curl_easy_escape(e_handler, ipv6, strlen(ipv6));
+
     rc = asprintf(&res, "%s%cinfo_hash=%s&peer_id=%.20s&port=%s&"
                   "uploaded=0&downloaded=0&left=0&event=%s"
-                  "&compact=1&numwant=1&no_peer_id=1",
+                  "&compact=1&numwant=1&no_peer_id=1%s%s",
                   url, strchr(url, '?') ? '&' : '?',
-                  hash, peer_id, port, event);
+                  hash, peer_id, port, event,
+                  ipv6_escaped ? "&ipv6=" : "",
+                  ipv6_escaped ? ipv6_escaped : "");
     if(rc < 0)
         res = NULL;
     curl_free(hash);
+    if(ipv6_escaped)
+        curl_free(ipv6_escaped);
     return res;
 }
 
