@@ -196,20 +196,86 @@ send_unchoke(int fd)
     return 0;
 }
 
-cps int
-send_multi_chunk(int fd, struct chunk *chunk, int first)
+void *
+map_file(struct ht_torrent *t, int index)
 {
-    unsigned char *body;
-    int file, rc, i, pos;
-    int64_t begin, end;
-    unsigned char head[8];
-    ht_torrent *t = peers[fd].t;
+    void *map;
+    int fd;
+
+    if(t->files[index]->map)
+        return 0;
+
+    fd = open(t->files[index]->path, O_RDONLY);
+    if(fd < 0)
+        return -1;
+
+    map = mmap(NULL, t->files[index]->length,
+               PROT_READ, MAP_PRIVATE, fd, 0);
+    if(map == MAP_FAILED) {
+        int save = errno;
+        close(fd);
+        errno = save;
+        return NULL;
+    }
+    t->files[index]->map = map;
+    return map;
+}
+
+int
+find_chunk(ht_torrent *t, uint64_t begin, unsigned int length,
+           int *first_return, int *last_return,
+           unsigned *offset_return, unsigned *last_len_return)
+{
+    int i, first = -1, last = -1;
+    unsigned offset, last_len;
     struct file *f;
 
-    printf("send_multi\n");
+    for(i = 0; i < t->num_files; i++) {
+        f = t->files[i];
+        if(f->offset < begin) {
+            first = i;
+        }
+        if(f->offset + f->length >= begin + length) {
+            last = i;
+            break;
+        }
+    }
 
-    begin = chunk->offset * t->p_length + chunk->begin;
-    end = begin + chunk->length;
+    if(first < 0 || last < 0)
+        return -1;
+
+    assert(last >= first);
+    assert(begin >= t->files[first]->offset);
+    assert(begin + length <= t->files[last]->offset + t->files[last]->length);
+
+    offset = begin - t->files[first]->offset;
+    /* Chunk beyond last file */
+    if(offset > t->files[first]->length)
+        return -1;
+    last_len = begin + length - t->files[last]->offset;
+
+    if(first_return)
+        *first_return = first;
+    if(last_return)
+        *last_return = last;
+    if(offset_return)
+        *offset_return = offset;
+    if(last_len_return)
+        *last_len_return = last_len;
+
+    return 1;
+}
+
+cps int
+send_multi_chunk(int fd, struct chunk *chunk,
+                 int first, int last, unsigned offset)
+{
+    unsigned char buf[8];
+    unsigned char *body;
+    int pos, i, len, rc;
+    struct ht_torrent *t = peers[fd].t;
+
+    printf("%03d send_multi\n", fd);
 
     body = malloc(chunk->length);
     if(!body) {
@@ -217,58 +283,45 @@ send_multi_chunk(int fd, struct chunk *chunk, int first)
         return -1;
     }
 
-    i = first;
     pos = 0;
-    while(pos < chunk->length) {
-        f = t->files[i];
-        if(!f->map) {
-            file = open(f->path, O_RDONLY);
-            if(file < 0){
-                perror("(send_chunk)open");
-                return -1;
-            }
-
-            f->map = mmap(NULL, f->length, PROT_READ,
-                                    MAP_PRIVATE, file, 0);
-            if(f->map == MAP_FAILED) {
-                perror("(send_chunk)mmap");
-                return -1;
-            }
+    for(i = first; i <= last; i++) {
+        map_file(t, i);
+        if(t->files[i]->map == NULL) {
+            perror("map_file");
+            goto fail;
         }
-        if(i == first) {
-            memcpy(body + pos, f->map + begin - f->offset,
-                   f->length - begin + f->offset);
-            pos += f->length - begin + f->offset;
-        }
-        else if(pos + f->length > chunk->length) {
-            memcpy(body + pos, f->map,
-                   f->length - end + f->offset);
-            pos += f->length - end + f->offset;
-        }
-        else {
-            memcpy(body + pos, f->map, f->length);
-            pos += f->length;
-        }
-        i++;
+        len = MIN(chunk->length - pos,
+                  t->files[i]->length);
+        memcpy(body + pos,
+               i == first ? t->files[i]->map + offset : t->files[i]->map,
+               len);
+        pos += len;
     }
 
     printf("%3d send chunk: length=%d, offset=%lld\n",
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
-    *((uint32_t *)(head + 0)) = htonl(chunk->offset);
-    *((uint32_t *)(head + 4)) = htonl(chunk->begin);
+    *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
+    *((uint32_t *)(buf + 4)) = htonl(chunk->begin);
 
-    rc = send_message_2(fd, 7, head, 8, body, chunk->length);
+    /* pos may be smaller than chunk->length, if the chunk extended beyond
+       the end of the torrent. */
+    rc = send_message_2(fd, 7, buf, 8, body, pos);
     if(rc < 0) {
         perror("(send_chunk)write");
-        return -1;
+        goto fail;
     }
 
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
 
+    free(body);
     return 0;
+
+ fail:
+    free(body);
+    return -1;
 }
 
 cps int
@@ -278,30 +331,11 @@ send_chunk(int fd, struct chunk *chunk)
     unsigned char buf[8];
     void *source;
     ht_torrent *t = peers[fd].t;
-    int64_t begin, end; /* offsets */
-    int first, last; /* files */
+    int first, last;
+    unsigned offset;
     struct file *f;
 
     assert(peers[fd].stream_writer);
-
-    begin = chunk->offset * t->p_length + chunk->begin;
-    end = begin + chunk->length;
-
-    first = 0;
-    last = 0;
-    for(i = 0; i < t->num_files; i++) {
-        f = t->files[i];
-        if(f->offset < begin) {
-            first = i;
-        }
-        if(f->offset + f->length > end) {
-            last = i;
-            break;
-        }
-    }
-
-    if(first != last)
-        return send_multi_chunk(fd, chunk, first);
 
     if(chunk->length > MAX_PEER_CREDIT) {
         fprintf(stderr, "Chunk larger than max credit!\n");
@@ -333,28 +367,23 @@ send_chunk(int fd, struct chunk *chunk)
         }
     }
 
-    if(!peers[fd].t->files[first]->map) {
-        file = open(t->files[first]->path, O_RDONLY);
-        if(file < 0){
-            perror("(send_chunk)open");
-            return -1;
-        }
-
-        peers[fd].t->files[first]->map = mmap(NULL, t->files[first]->length, PROT_READ,
-                                              MAP_PRIVATE, file, 0);
-        if(peers[fd].t->files[0]->map == MAP_FAILED) {
-            perror("(send_chunk)mmap");
-            return -1;
-        }
-    }
-
-    if(begin > t->files[first]->length) {
-        fprintf(stderr, "%03d chunk beyond end of file -- dropping.\n", fd);
+    rc = find_chunk(t, chunk->offset * t->p_length + chunk->begin,
+                    chunk->length, &first, &last, &offset, NULL);
+    if(rc < 0) {
+        fprintf(stderr, "Couldn't find chunk.\n");
         return -1;
     }
 
-    source = peers[fd].t->files[first]->map;
-    source += begin - peers[fd].t->files[first]->offset;
+    if(first != last)
+        return send_multi_chunk(fd, chunk, first, last, offset);
+
+    map_file(peers[fd].t, first);
+    if(peers[fd].t->files[first]->map == NULL) {
+        perror("map_file");
+        return -1;
+    }
+
+    source = peers[fd].t->files[first]->map + offset;
 
     printf("%3d send chunk: length=%d, offset=%lld\n",
            fd, chunk->length,
@@ -526,9 +555,22 @@ stream_reader(int fd)
             }
 
             if(res[0] == 6) {
-                /* add request in request list */
+                int rc, i, first, last;
+                unsigned offset, last_len;
+                rc = find_chunk(peers[fd].t,
+                                index * peers[fd].t->p_length + begin,
+                                chunk_len,
+                                &first, &last, &offset, &last_len);
+                if(rc < 0)
+                    goto fail;
                 peers[fd].list = add_chunk(peers[fd].list,
                                            index, begin, chunk_len);
+                for(i = first; i <= last; i++)
+                    prefetch(peers[fd].t->files[i]->map +
+                             (i == first ? offset : 0),
+                             i == last ?
+                             last_len : peers[fd].t->files[i]->length);
+
                 if(peers[fd].t->num_files == 1 &&
                    peers[fd].t->files[0]->map)
                     prefetch(peers[fd].t->files[0]->map +
