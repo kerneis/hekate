@@ -417,7 +417,6 @@ handshake(hashtable *ht , int fd)
 {
     int rc = 0;
     const char *protocol = "\023BitTorrent protocol";
-    unsigned char hash[20];
     char *res = NULL, *tmp = NULL, t[68];
     ht_torrent *torrent = NULL;
 
@@ -432,9 +431,7 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    memcpy(hash, t + 28, 20);
-
-    torrent = ht_get(ht, (unsigned char *)hash);
+    torrent = ht_get(ht, t + 28);
     if(!torrent) {
         fprintf(stderr, "(handshake) : cannot find the hash in the table\n");
         return -1;
