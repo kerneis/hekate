@@ -162,9 +162,11 @@ send_bitfield(int fd, ht_torrent *t, char *head, int headlen)
     rc = send_message_h(fd, head, headlen, 5, buf, length);
     if(rc < 0) {
         perror("(send_bitfield)cpc_message");
+        free(buf);
         return -1;
     }
 
+    free(buf);
     return 1;
 }
 
