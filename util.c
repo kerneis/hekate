@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #include "util.h"
 
@@ -101,7 +102,7 @@ get_source_address(const struct sockaddr *dst, socklen_t dst_len,
 
 /* Like above, but for a given DNS name. */
 int
-get_name_source_address(const char *name, int af,
+get_name_source_address(int af, const char *name,
                         struct sockaddr *src, socklen_t *src_len)
 {
     struct addrinfo hints, *info, *infop;
@@ -153,6 +154,38 @@ global_unicast_address(struct sockaddr *sa)
         return (a[0] & 0xE0) == 0x20;
     } else {
         errno = EAFNOSUPPORT;
+        return -1;
+    }
+}
+
+int
+find_global_address(int af, char *address, int address_len)
+{
+    struct sockaddr_storage ss;
+    socklen_t ss_len = sizeof(ss);
+    int rc;
+    const char *ret;
+
+    /* This should be a name with both IPv4 and IPv6 addresses. */
+    rc = get_name_source_address(af, "www.ietf.org",
+                                 (struct sockaddr*)&ss, &ss_len);
+
+    if( rc < 0 )
+        return -1;
+
+    if(!global_unicast_address((struct sockaddr*)&ss))
+        return -1;
+
+    switch(af) {
+    case AF_INET:
+        ret = inet_ntop(af, &((struct sockaddr_in*)&ss)->sin_addr,
+                        address, address_len);
+        return ret ? 1 : -1;
+    case AF_INET6:
+        ret = inet_ntop(af, &((struct sockaddr_in6*)&ss)->sin6_addr,
+                       address, address_len);
+        return ret ? 1 : -1;
+    default:
         return -1;
     }
 }
