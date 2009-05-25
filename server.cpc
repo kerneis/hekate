@@ -52,6 +52,9 @@ int numpeers = 0;
 
 struct peer peers[FD_MAX];
 
+#define MAX(x, y) ((x) >= (y) ? (x) : (y))
+#define MIN(x, y) ((x) >= (y) ? (y) : (x))
+
 cps int
 send_message_2(int fd, int id,
                char *body1, int bodylen1, char *body2, int bodylen2)
