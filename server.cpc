@@ -254,7 +254,10 @@ find_chunk(ht_torrent *t, uint64_t begin, unsigned int length,
     /* Chunk beyond last file */
     if(offset > t->files[first]->length)
         return -1;
-    last_len = begin + length - t->files[last]->offset;
+    if(first == last)
+        last_len = length;
+    else
+        last_len = begin + length - t->files[last]->offset;
 
     if(first_return)
         *first_return = first;
