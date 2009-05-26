@@ -309,7 +309,7 @@ find_chunk(ht_torrent *t, uint64_t begin, unsigned int length,
     return 1;
 }
 
-cps int
+int
 send_multi_chunk(int fd, struct chunk *chunk,
                  int first, int last, unsigned offset)
 {
@@ -350,7 +350,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
 
     /* pos may be smaller than chunk->length, if the chunk extended beyond
        the end of the torrent. */
-    rc = send_message_2(fd, 7, buf, 8, body, pos);
+    rc = send_message_2_d(fd, 7, buf, 8, body, pos);
     if(rc < 0) {
         perror("(send_chunk)write");
         goto fail;
@@ -417,8 +417,13 @@ send_chunk(int fd, struct chunk *chunk)
         return -1;
     }
 
-    if(first != last)
-        return send_multi_chunk(fd, chunk, first, last, offset);
+    if(first != last) {
+        /* For simplicity, we always use a native thread for data that's at
+           a chunk border. */
+        cpc_detached {
+            return send_multi_chunk(fd, chunk, first, last, offset);
+        }
+    }
 
     map_file(peers[fd].t, first);
     if(peers[fd].t->files[first]->map == NULL) {
@@ -435,11 +440,22 @@ send_chunk(int fd, struct chunk *chunk)
     *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
     *((uint32_t *)(buf + 4)) = htonl(chunk->begin);
 
-    if(!incore(source, chunk->length))
+    if(!incore(source, chunk->length)) {
         /* Since we prefetch when we first get a request, this chunk should
            arrive into core soon.  Yield in order to give it a chance. */
-        /* Another strategy would be to detach if the data is not in core. */
         cpc_yield;
+        if(!incore(source, chunk->length)) {
+            /* Still not in core.  Use a native thread to avoid blocking. */
+            cpc_detached {
+                rc = send_message_2_d(fd, 7, buf, 8, source, chunk->length);
+                if(rc < 0) {
+                    perror("(send_chunk)write");
+                    return -1;
+                }
+            }
+            goto done;
+        }
+    }
 
     rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
     if(rc < 0) {
@@ -447,6 +463,7 @@ send_chunk(int fd, struct chunk *chunk)
         return -1;
     }
 
+ done:
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
 
@@ -605,17 +622,14 @@ stream_reader(int fd)
                     goto fail;
                 peers[fd].list = add_chunk(peers[fd].list,
                                            index, begin, chunk_len);
-                for(i = first; i <= last; i++)
-                    prefetch(peers[fd].t->files[i]->map +
-                             (i == first ? offset : 0),
-                             i == last ?
-                             last_len : peers[fd].t->files[i]->length);
+                for(i = first; i <= last; i++) {
+                    if(peers[fd].t->files[i]->map)
+                        prefetch(peers[fd].t->files[i]->map +
+                                 (i == first ? offset : 0),
+                                 i == last ?
+                                 last_len : peers[fd].t->files[i]->length);
+                }
 
-                if(peers[fd].t->num_files == 1 &&
-                   peers[fd].t->files[0]->map)
-                    prefetch(peers[fd].t->files[0]->map +
-                             index * peers[fd].t->p_length + begin,
-                             chunk_len);
                 if(peers[fd].stream_writer == 0) {
                     peers[fd].stream_writer = 1;
                     cpc_spawn stream_writer(fd);
