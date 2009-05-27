@@ -258,6 +258,7 @@ map_file(struct ht_torrent *t, int index)
         return NULL;
     }
     t->files[index]->map = map;
+    close(fd);
     return map;
 }
 
