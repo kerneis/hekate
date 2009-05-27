@@ -74,8 +74,29 @@ generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
 }
 
 size_t
-writer(void  *ptr, size_t size, size_t nmemb, void *stream)
+writer(void *ptr, size_t size, size_t nmemb, void *stream)
 {
+    struct ht_torrent *tor = stream;
+    char *p;
+    int interval = -1;
+
+    /* We really should reassemble the pieces and use a proper bencoding
+       parser.  This will do for now. */
+    p = memmem(ptr, size * nmemb, "8:intervali", 11);
+    if(p && p < ptr + size * nmemb) {
+        p += 11;
+        interval = 0;
+        while(p < ptr + size * nmemb && *p >= '0' && *p <= '9') {
+            interval = interval * 10 + (*p - '0');
+            p++;
+        }
+        if(interval < 120 || inerval > 24 * 3600) {
+            fprintf(stderr, "Unexpected interval %d\n", interval);
+            interval = -1;
+        }
+    }
+
+    tor->update_interval = interval;
     return nmemb;
 }
 
@@ -114,6 +135,9 @@ connection(tr_list *t, int timer)
         /* The protocol for double-stack torrents is pretty broken; the
            ``&ip='' hack cannot work.  Just disable IPv6 for now. */
         rc = curl_easy_setopt(e_handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        if(rc != CURLE_OK) goto curl_error;
+
+        rc = curl_easy_setopt(e_handle, CURLOPT_WRITEDATA, current->elmt);
         if(rc != CURLE_OK) goto curl_error;
 
         rc = curl_easy_setopt(e_handle, CURLOPT_WRITEFUNCTION, writer);
