@@ -113,8 +113,6 @@ connection(tr_list *t)
     long http_code;
     int interval = -1;
 
-    printf("A\n");
-
     if(strncmp(t->url, "http://", 7) != 0) {
         fprintf(stderr, "(connection)bad tracker url: %s\n", t->url);
         return;
@@ -124,7 +122,6 @@ connection(tr_list *t)
     if(!e_handle) goto fail;
 
     for(current = t->head; current; current  = current -> next) {
-        printf("B\n");
         request = generate_get(t->url, current->elmt, "started", e_handle);
         if(!request) {
             perror("(connection)generate_get");
@@ -205,7 +202,6 @@ init_trackers()
     current = trackers;
 
     while(current) {
-        printf("0\n");
         cpc_spawn connection(current);
         current = current -> next;
     }
