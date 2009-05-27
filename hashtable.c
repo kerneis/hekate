@@ -290,7 +290,7 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
     ht_torrent *elmt;
     char *url = NULL;
 
-    elmt = malloc(sizeof(ht_torrent));
+    elmt = calloc(1, sizeof(ht_torrent));
     if(!elmt) {
         perror("ht_load");
         free_benc(raw);
