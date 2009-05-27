@@ -45,6 +45,8 @@ typedef struct ht_torrent {
     int num_files;
     struct file **files;
     unsigned char *info_hash;
+
+    int update_interval;
 } ht_torrent;
 
 typedef struct hashtable{
