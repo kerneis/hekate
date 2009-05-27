@@ -34,11 +34,11 @@ THE SOFTWARE.
 #include "list.h"
 #include "tracker.h"
 
-#define TRACKER_TIMER 1800
-
 char peer_id[21];
 char *port = "6969";
 int notracker = 0;
+
+#define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
 char *
 generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
@@ -90,7 +90,7 @@ writer(void *ptr, size_t size, size_t nmemb, void *stream)
             interval = interval * 10 + (*p - '0');
             p++;
         }
-        if(interval < 120 || inerval > 24 * 3600) {
+        if(interval < 120 || interval > 24 * 3600) {
             fprintf(stderr, "Unexpected interval %d\n", interval);
             interval = -1;
         }
@@ -101,18 +101,19 @@ writer(void *ptr, size_t size, size_t nmemb, void *stream)
 }
 
 /* This works around a bug in CPC. */
-cps void connection(tr_list *t, int timer);
+cps void connection(tr_list *t);
 
 cps void
-connection(tr_list *t, int timer)
+connection(tr_list *t)
 {
     CURLcode rc = NULL;
     CURL *e_handle = NULL;
     char *request = NULL;
     to_list *current = NULL;
     long http_code;
+    int interval = -1;
 
-    cpc_sleep(timer);
+    printf("A\n");
 
     if(strncmp(t->url, "http://", 7) != 0) {
         fprintf(stderr, "(connection)bad tracker url: %s\n", t->url);
@@ -123,6 +124,7 @@ connection(tr_list *t, int timer)
     if(!e_handle) goto fail;
 
     for(current = t->head; current; current  = current -> next) {
+        printf("B\n");
         request = generate_get(t->url, current->elmt, "started", e_handle);
         if(!request) {
             perror("(connection)generate_get");
@@ -156,6 +158,13 @@ connection(tr_list *t, int timer)
         }
 
         free(request);
+
+        if(current->elmt->update_interval > 0) {
+            if(interval < 0)
+                interval = current->elmt->update_interval;
+            else
+                interval = MAX(interval, current->elmt->update_interval);
+        }
         continue;
 
     curl_error:
@@ -169,12 +178,17 @@ connection(tr_list *t, int timer)
 
     curl_easy_cleanup(e_handle);
 
-    cpc_spawn connection(t, TRACKER_TIMER);
+    /* This printf works around a bug in CPC.  Don't remove it before CPC
+       is fixed! */
+    printf("XXX %d\n", interval);
+    cpc_sleep(interval > 0 ? interval : 1800);
+    connection(t);
     return;
 
  fail:
     fprintf(stderr, "Couldn't allocate CURL request.\n");
-    cpc_spawn connection(t, TRACKER_TIMER);
+    cpc_sleep(interval > 0 ? interval : 1800);
+    connection(t);
 }
 
 void
@@ -191,7 +205,8 @@ init_trackers()
     current = trackers;
 
     while(current) {
-        cpc_spawn connection(current, 0);
+        printf("0\n");
+        cpc_spawn connection(current);
         current = current -> next;
     }
 }
