@@ -552,17 +552,28 @@ stream_writer(int fd)
 cps int
 stream_reader(int fd)
 {
-    uint32_t tmp = 0, length = 0;
-    char * res = NULL;
+    uint32_t length = 0;
+    unsigned char *buff = NULL;
     uint32_t begin, index, chunk_len;
+    int start = 0, end = 0;
+
+    buff = malloc(BUF_LENGTH);
+    if(!buff)
+        return -1;
 
     while(1){
-        if(cpc_full_read(fd, &tmp, 4) < 4) {
-            perror("(stream_read) didn't read 4 bytes");
-            return -1;
+        if(end - start < 4) {
+            if(start != end)
+                if(!memcpy(buff, buff + start, end - start))
+                    goto fail;
+
+            start = end - start;
+            end = cpc_full_read0(fd, buff + start, 4, BUF_LENGTH - start);
+            start = 0;
         }
 
-        length = ntohl(tmp);
+        length = ntohl(*(uint32_t *)(buff + start));
+        start += 4;
         if(length == 0) {
             //keepalive message
             continue;
@@ -570,26 +581,27 @@ stream_reader(int fd)
 
         if(length > 128 * 1024) {
             printf("%3d unbelievably long message (%d bytes).\n", fd, length);
-            return -1;
-        }
-
-        res = malloc(length);
-        if(res == NULL)
-            return -1;
-
-        if(cpc_full_read(fd, res, length) < 0) {
-            perror("(stream_read)cpc_full_read");
             goto fail;
         }
 
-        printf("%3d <- type = %d, length = %d\n", fd, res[0], length);
+        if(end - start < length){
+            if(start != end)
+                if(!memcpy(buff, buff + start, end - start))
+                    goto fail;
 
-        if(res[0] != 5 && length > 20) {
+            start = end - start;
+            end = cpc_full_read0(fd, buff + start, length, BUF_LENGTH - start);
+            start = 0;
+        }
+
+        printf("%3d <- type = %d, length = %d\n", fd, buff[start], length);
+
+        if(buff[start] != 5 && length > 20) {
             printf("%3d unbelievably long message!\n", fd);
             goto fail;
         }
 
-        switch(res[0]) {
+        switch(buff[start]) {
         case 7: case 5: case 0: case 1: case 2: case 4:
             break;
 
@@ -600,19 +612,19 @@ stream_reader(int fd)
         case 6:                     //request
         case 8:                     //cancel
             if(length < 13)
-                goto fail;
-            index = ntohl(*((uint32_t *)(res+1)));
-            begin = ntohl(*((uint32_t *)(res+5)));
-            chunk_len = ntohl(*((uint32_t *)(res+9)));
+                goto fail;;
+            index = ntohl(*((uint32_t *)(&(buff[start])+1)));
+            begin = ntohl(*((uint32_t *)(&(buff[start])+5)));
+            chunk_len = ntohl(*((uint32_t *)(&(buff[start])+9)));
             printf("%3d %s: index = %u\tbegin = %u\tlength = %u\n",
-                   fd, res[0] == 6 ? "request" : "cancel",
+                   fd, buff[start] == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
             if(chunk_len > 1024 * 1024) {
                 fprintf(stderr, "Unbelievably large chunk size requested.\n");
                 goto fail;
             }
 
-            if(res[0] == 6) {
+            if((int)buff[start] == 6) {
                 int rc, i, first, last;
                 unsigned offset, last_len;
                 rc = find_chunk(peers[fd].t,
@@ -645,10 +657,10 @@ stream_reader(int fd)
             fprintf(stderr , "%3d unexpected message.\n", fd);
             goto fail;
         }
-        free(res);
+        start += length;
     }
  fail:
-    free(res);
+    free(buff);
     return -1;
 }
 
