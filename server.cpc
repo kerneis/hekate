@@ -564,11 +564,13 @@ stream_reader(int fd)
     while(1){
         if(end - start < 4) {
             if(start != end)
-                if(!memcpy(buff, buff + start, end - start))
-                    goto fail;
+                memcpy(buff, buff + start, end - start);
+
 
             start = end - start;
             end = cpc_full_read0(fd, buff + start, 4, BUF_LENGTH - start);
+            if(end < 4)
+                goto fail;
             start = 0;
         }
 
@@ -586,11 +588,12 @@ stream_reader(int fd)
 
         if(end - start < length){
             if(start != end)
-                if(!memcpy(buff, buff + start, end - start))
-                    goto fail;
+                memcpy(buff, buff + start, end - start);
 
             start = end - start;
             end = cpc_full_read0(fd, buff + start, length, BUF_LENGTH - start);
+            if(end < length)
+                goto fail;
             start = 0;
         }
 
