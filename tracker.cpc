@@ -177,8 +177,8 @@ connection(tr_list *t)
 
     /* This printf works around a bug in CPC.  Don't remove it before CPC
        is fixed! */
-    printf("XXX %d\n", interval);
-    cpc_sleep(interval > 0 ? interval : 1800);
+    int tmp = interval > 0 ? interval : 1800;
+    cpc_sleep(tmp);
     connection(t);
     return;
 

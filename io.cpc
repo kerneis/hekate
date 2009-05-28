@@ -60,27 +60,28 @@ cpc_full_read(int fd, char *buf, int len)
 }
 
 cps int
-cpc_full_read0(int fd, unsigned char *buf, int min_len, int max_len)
+cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
 {
-    int start = 0, rc = 0;
+    int pos = 0, rc = 0;
 
     while(1){
-        rc = read(fd, buf + start, max_len - start);
-
-        if(rc <= 0){
-            if(errno != EAGAIN){
-                errno = EPIPE;
+        rc = read(fd, buf + pos, max_len - pos);
+        if(rc ==0){
+            errno = EPIPE;
+            return -1;
+        } else if(rc < 0){
+            if(errno != EAGAIN)
                 return -1;
-            }
         }
-        else
-            start += rc;
-
-        if(start >= min_len) break;
+        else{
+            pos += rc;
+            if(pos >= min_len)
+                break;
+        }
         cpc_io_wait(fd, CPC_IO_IN);
     }
 
-    return start;
+    return pos;
 }
 
 cps int
