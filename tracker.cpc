@@ -30,8 +30,8 @@ THE SOFTWARE.
 #include <string.h>
 #include <arpa/inet.h>
 
-#include "hashtable.h"
 #include "list.h"
+#include "torrent.h"
 #include "tracker.h"
 
 char peer_id[21];

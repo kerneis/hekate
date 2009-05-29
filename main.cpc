@@ -50,7 +50,7 @@ void
 upload(hashtable *table, char *path)
 {
     DIR *dir;
-    int res, pos, length;
+    int pos, length;
     unsigned char tmp[20];
     char *curr_path;
     buffer *buf;
@@ -107,16 +107,6 @@ upload(hashtable *table, char *path)
 
                 /* insert in trackers list */
                 tr_insert(elmt);
-
-                if(res == -1) {
-                    fprintf(stderr, "(upload)fscked append in ht_load.\n");
-                    exit(EXIT_FAILURE);
-                }
-                if(res == -2) {
-                    fprintf(stderr, "(upload)bad torrent file: %s\n", curr_path);
-                    free(curr_path);
-                    continue;
-                }
 
                 close_buffer(buf);
             }

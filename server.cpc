@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "util.h"
 #include "hashtable.h"
 #include "parse.h"
+#include "torrent.h"
 #include "tracker.h"
 #include "list.h"
 #include "io.h"

@@ -24,32 +24,6 @@ THE SOFTWARE.
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include "parse.h"
-
-struct file {
-    int64_t offset;
-    int64_t length;
-    char *path;
-    char *map;
-};
-
-struct torrent {
-    /* hashtable fields */
-    unsigned char *info_hash;
-    struct torrent *next;
-
-    /* pieces size in bytes */
-    int64_t p_length;
-    int32_t num_chunks;
-
-    int num_files;
-    struct file **files;
-
-    char *tracker_url;
-
-    int update_interval;
-};
-
 typedef struct hashtable{
     int size;
     struct torrent **table;
@@ -59,6 +33,4 @@ typedef struct hashtable{
 hashtable * ht_create(int size);
 void ht_insert(hashtable *ht, struct torrent *hte);
 struct torrent * ht_get(hashtable *ht, unsigned char *key);
-
-struct torrent * ht_load(char *curr_path, benc *raw);
 #endif
