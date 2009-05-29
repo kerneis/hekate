@@ -35,7 +35,7 @@ struct file {
 
 struct torrent {
     /* hashtable fields */
-    unsigned char key[20];
+    unsigned char *info_hash;
     struct torrent *next;
 
     /* pieces size in bytes */
@@ -44,7 +44,8 @@ struct torrent {
 
     int num_files;
     struct file **files;
-    unsigned char *info_hash;
+
+    char *tracker_url;
 
     int update_interval;
 };
@@ -56,9 +57,8 @@ typedef struct hashtable{
 
 
 hashtable * ht_create(int size);
-unsigned char * ht_insert(hashtable *ht, struct torrent *hte);
+void ht_insert(hashtable *ht, struct torrent *hte);
 struct torrent * ht_get(hashtable *ht, unsigned char *key);
 
-int ht_load(hashtable *table, char *curr_path, benc *raw);
-int ht_info_load(struct torrent *elmt, char *curr_path, benc *raw);
+struct torrent * ht_load(char *curr_path, benc *raw);
 #endif

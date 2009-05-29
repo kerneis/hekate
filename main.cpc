@@ -100,7 +100,13 @@ upload(hashtable *table, char *path)
                 result = parsing(buf);
                 memcpy(tmp, result->hash, 20);
 
-                res = ht_load(table, path, result);
+                elmt = ht_load(path, result);
+                if(!elmt) continue;
+
+                ht_insert(table, elmt);
+
+                /* insert in trackers list */
+                tr_insert(elmt);
 
                 if(res == -1) {
                     fprintf(stderr, "(upload)fscked append in ht_load.\n");

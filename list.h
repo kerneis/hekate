@@ -53,7 +53,7 @@ typedef struct peer {
 } peer;
 
 
-void tr_insert(struct torrent *t, char *url);
+void tr_insert(struct torrent *t);
 struct chunk *add_chunk(struct chunk *l, int64_t offset, int begin, int length);
 struct chunk *remove_chunk(struct chunk *l, int offset, int begin, int length);
 

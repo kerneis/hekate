@@ -43,7 +43,7 @@ make_benc(benc_type type)
 {
     benc *r;
 
-    r = malloc(sizeof(benc));
+    r = calloc(1, sizeof(benc));
 
     switch (r->type = type) {
         case INT:
@@ -108,7 +108,7 @@ start_hashing(buffer *b)
 }
 
 inline void
-stop_hashing(buffer *b, unsigned char result[20])
+stop_hashing(buffer *b, unsigned char *result)
 {
     SHA1_stop(&b->sha1, result);
     b->hashing = 0;
@@ -209,6 +209,11 @@ parse_dict (buffer *b, benc *r)
         if((!b->hashing) && !strcmp(key->s, "info")) {
             start_hashing(b);
             value = parsing(b);
+            r->hash = malloc(20);
+            if(!r->hash) {
+                perror("(parse_dict)malloc");
+                return;
+            }
             stop_hashing(b, r->hash);
         } else
             value = parsing(b);
