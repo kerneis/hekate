@@ -33,10 +33,10 @@ struct file {
     char *map;
 };
 
-typedef struct ht_torrent {
+struct torrent {
     /* hashtable fields */
     unsigned char key[20];
-    struct ht_torrent *next;
+    struct torrent *next;
 
     /* pieces size in bytes */
     int64_t p_length;
@@ -47,18 +47,18 @@ typedef struct ht_torrent {
     unsigned char *info_hash;
 
     int update_interval;
-} ht_torrent;
+};
 
 typedef struct hashtable{
     int size;
-    ht_torrent **table;
+    struct torrent **table;
 }hashtable;
 
 
 hashtable * ht_create(int size);
-unsigned char * ht_insert(hashtable *ht, ht_torrent *hte);
-ht_torrent * ht_get(hashtable *ht, unsigned char *key);
+unsigned char * ht_insert(hashtable *ht, struct torrent *hte);
+struct torrent * ht_get(hashtable *ht, unsigned char *key);
 
 int ht_load(hashtable *table, char *curr_path, benc *raw);
-int ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw);
+int ht_info_load(struct torrent *elmt, char *curr_path, benc *raw);
 #endif

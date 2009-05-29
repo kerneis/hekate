@@ -177,7 +177,7 @@ send_message_h(int fd, char *head, int headlen,
 }
 
 cps int
-send_bitfield(int fd, ht_torrent *t, char *head, int headlen)
+send_bitfield(int fd, struct torrent *t, char *head, int headlen)
 {
     int num_chunks = 0, length = 0;
     unsigned char *buf= NULL;
@@ -237,7 +237,7 @@ send_unchoke(int fd)
 }
 
 void *
-map_file(struct ht_torrent *t, int index)
+map_file(struct torrent *t, int index)
 {
     void *map;
     int fd;
@@ -263,7 +263,7 @@ map_file(struct ht_torrent *t, int index)
 }
 
 int
-find_chunk(ht_torrent *t, uint64_t begin, unsigned int length,
+find_chunk(struct torrent *t, uint64_t begin, unsigned int length,
            int *first_return, int *last_return,
            unsigned *offset_return, unsigned *last_len_return)
 {
@@ -317,7 +317,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
     unsigned char buf[8];
     unsigned char *body;
     int pos, i, len, rc;
-    struct ht_torrent *t = peers[fd].t;
+    struct torrent *t = peers[fd].t;
 
     printf("%03d send_multi\n", fd);
 
@@ -374,7 +374,7 @@ send_chunk(int fd, struct chunk *chunk)
     int file, i, rc;
     unsigned char buf[8];
     void *source;
-    ht_torrent *t = peers[fd].t;
+    struct torrent *t = peers[fd].t;
     int first, last;
     unsigned offset;
     struct file *f;
@@ -477,7 +477,7 @@ handshake(hashtable *ht , int fd)
     int rc = 0;
     const char *protocol = "\023BitTorrent protocol";
     char *res = NULL, *tmp = NULL, t[68];
-    ht_torrent *torrent = NULL;
+    struct torrent *torrent = NULL;
 
     rc = cpc_full_read(fd, t, 68);
     if(rc < 68) {

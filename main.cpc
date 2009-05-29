@@ -55,7 +55,7 @@ upload(hashtable *table, char *path)
     char *curr_path;
     buffer *buf;
     benc *result;
-    ht_torrent *elmt;
+    struct torrent *elmt;
     struct dirent *entry;
     struct stat st;
 
