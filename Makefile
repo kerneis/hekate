@@ -11,7 +11,7 @@ LDLIBS=-lcurl -lm -pthread -lcpcfull
 
 all: main
 
-main: sha1.o util.o io.o list.o hashtable.o parse.o tracker.o server.o main.o
+main: sha1.o util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o main.o
 
 clean:
 	rm -f *.o *~ *.cpi

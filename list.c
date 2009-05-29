@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 #include "list.h"
 #include "parse.h"
-#include "hashtable.h"
+#include "torrent.h"
 #include "tracker.h"
 
 void
