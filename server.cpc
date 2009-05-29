@@ -320,8 +320,6 @@ send_multi_chunk(int fd, struct chunk *chunk,
     int pos, i, len, rc;
     struct torrent *t = peers[fd].t;
 
-    printf("%03d send_multi\n", fd);
-
     body = malloc(chunk->length);
     if(!body) {
         perror("(send_multi_chunk)malloc");
