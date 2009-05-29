@@ -52,11 +52,11 @@ ht_create(int size)
 }
 
 
-unsigned char *
+void
 ht_insert(hashtable *ht, struct torrent *hte)
 {
     /* unsigned char *key, void *value) */
-    uint32_t h = hash(hte->key, ht->size);
+    uint32_t h = hash(hte->info_hash, ht->size);
 
     if(ht->table[h])
       hte->next = ht->table[h];
@@ -64,8 +64,6 @@ ht_insert(hashtable *ht, struct torrent *hte)
       hte->next = NULL;
 
     ht->table[h] = hte;
-
-    return hte->key;
 }
 
 
@@ -75,7 +73,7 @@ ht_get(hashtable *ht, unsigned char *key)
     uint32_t h = hash(key, ht->size);
     struct torrent *hte = ht->table[h];
     while(hte) {
-        if(!memcmp(key, hte->key, 20))
+        if(!memcmp(key, hte->info_hash, 20))
             return hte;
         hte = hte->next;
     }
@@ -282,39 +280,32 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
     return 0;
 }
 
-int
-ht_load(hashtable *table, char *curr_path, benc *raw)
+struct torrent *
+ht_load(char *curr_path, benc *raw)
 {
     /* XXX free correctement en cas d'erreur... */
     int i, c, rc;
     struct torrent *elmt;
-    char *url = NULL;
 
     elmt = calloc(1, sizeof(struct torrent));
     if(!elmt) {
         perror("ht_load");
-        free_benc(raw);
-        return -1;
+        goto error;
     }
 
-    if(raw->type != DICT) {
-        free_benc(raw);
-        return -2;
-    }
+    if(raw->type != DICT)
+        goto torrent_error;
 
     c=0; /* Use the fact that dictionnary are sorted */
     for(i=0; i<raw->size; i+=2) {
-        if((raw->set.l[i])->type != STRING) {
-            if(url) free(url);
-            free_benc(raw);
-            return -2;
-        }
+        if((raw->set.l[i])->type != STRING)
+            goto torrent_error;
 
         switch(c) {
         case 0:
             if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
                (raw->set.l[i+1])->type == STRING) {
-                url = (raw->set.l[i+1])->s;
+                elmt->tracker_url = (raw->set.l[i+1])->s;
                 raw->set.l[i+1]->s = NULL;
                 c++;
             }
@@ -324,11 +315,10 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
             if(strcmp((raw->set.l[i])->s, "info") == 0 &&
                (raw->set.l[i+1])->type == DICT ) {
                 rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]);
-                if(rc < 0) {
-                    free(url);
-                    free_benc(raw);
-                    return rc;
-                }
+                if(rc < -1)
+                    goto torrent_error;
+                else if(rc < 0)
+                    goto error;
                 c++;
             }
             break;
@@ -338,22 +328,21 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
         }
     }
 
+    /* copy info hash */
+    elmt->info_hash = raw->hash;
+    raw->hash = NULL;
+
     /* was the .torrent complete? */
-    if(c<2) {
-        free_benc(raw);
-        return -2;
-    }
-
-    /* insert in hashtable */
-    memcpy(elmt->key, raw->hash, 20);
-
-    if(!(elmt->info_hash=ht_insert(table, elmt))) {
-        perror("ht_insert");
-        return -1;
-    }
-    /* insert in trackers list */
-    tr_insert(elmt, url);
+    if(c<2 || !elmt->info_hash)
+        goto torrent_error;
 
     free_benc(raw);
-    return 0;
+    return elmt;
+
+ torrent_error:
+    fprintf(stderr, "Bad .torrent file.\n");
+ error:
+    /* XXX free correctly */
+    free_benc(raw);
+    return NULL;
 }

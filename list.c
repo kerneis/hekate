@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "tracker.h"
 
 void
-tr_insert(struct torrent *t, char *url)
+tr_insert(struct torrent *t)
 {
     tr_list *tmp;
     to_list *to_elmt;
@@ -44,8 +44,9 @@ tr_insert(struct torrent *t, char *url)
     to_elmt->elmt = t;
 
     for(tmp = trackers; tmp; tmp = tmp->next) {
-        if(strcmp(tmp->url, url) == 0) {
-            free(url);
+        if(strcmp(tmp->url, t->tracker_url) == 0) {
+            free(t->tracker_url);
+            t->tracker_url = NULL;
             to_elmt->next = tmp->head;
             tmp->head = to_elmt;
             return;
@@ -58,7 +59,8 @@ tr_insert(struct torrent *t, char *url)
         exit(EXIT_FAILURE);
     }
     to_elmt->next = NULL;
-    tmp->url = url;
+    tmp->url = t->tracker_url;
+    t->tracker_url = NULL;
     tmp->head = to_elmt;
     tmp->next = trackers;
     trackers = tmp;
