@@ -1,10 +1,9 @@
-CPC_DIR=/home/pejman/developement/cpc
-CPC=$(CPC_DIR)/bin/cpc.asm.exe
+CPC=cpc.asm.exe
 
-CLIBS=-lcurl -I $(CPC_DIR)/runtime -I $(CPC_DIR)/libev
+CLIBS=-lcurl
 CFLAGS=-D_GNU_SOURCE -O3 -Wall -g $(CLIBS)
 
-LDLIBS=-lcurl $(CPC_DIR)/runtime/libcpc.a $(CPC_DIR)/runtime/cpc_runtime.a -lm -pthread
+LDLIBS=-lcurl -lm -pthread -lcpcfull
 
 .SUFFIXES: .cpc .cpi
 
@@ -16,10 +15,11 @@ main: sha1.o util.o io.o list.o hashtable.o parse.o tracker.o server.o main.o
 
 clean:
 	rm -f *.o *~ *.cpi
+	for x in *.cpc; do rm -f $${x%.cpc}.c; done;
 	rm -f main
 
 .cpc.cpi:
-	gcc -E -x c $(CFLAGS) -include cpc_runtime.h \
+	gcc -E -x c $(CFLAGS) -include cpc/cpc_runtime.h \
 	  -o $@ $<
 .cpi.c:
 	$(CPC) $< --out $@
