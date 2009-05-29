@@ -45,7 +45,7 @@ ht_create(int size)
     if(!ht) return NULL;
 
     ht->size = size;
-    ht->table = calloc(size, sizeof(ht_torrent *));
+    ht->table = calloc(size, sizeof(struct torrent *));
     if(!ht->table) return NULL;
 
     return ht;
@@ -53,7 +53,7 @@ ht_create(int size)
 
 
 unsigned char *
-ht_insert(hashtable *ht, ht_torrent *hte)
+ht_insert(hashtable *ht, struct torrent *hte)
 {
     /* unsigned char *key, void *value) */
     uint32_t h = hash(hte->key, ht->size);
@@ -69,11 +69,11 @@ ht_insert(hashtable *ht, ht_torrent *hte)
 }
 
 
-ht_torrent *
+struct torrent *
 ht_get(hashtable *ht, unsigned char *key)
 {
     uint32_t h = hash(key, ht->size);
-    ht_torrent *hte = ht->table[h];
+    struct torrent *hte = ht->table[h];
     while(hte) {
         if(!memcmp(key, hte->key, 20))
             return hte;
@@ -124,7 +124,7 @@ ht_concat_path(struct file *f, char *curr_path, benc *l)
 }
 
 int
-ht_files_load(ht_torrent *elmt, char *curr_path, benc *raw)
+ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, j, c, rc;
     int64_t offset;
@@ -182,7 +182,7 @@ ht_files_load(ht_torrent *elmt, char *curr_path, benc *raw)
 
 
 int
-ht_info_load(ht_torrent *elmt, char *curr_path, benc *raw)
+ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, c, rc, path_length;
     char *path = NULL;
@@ -287,10 +287,10 @@ ht_load(hashtable *table, char *curr_path, benc *raw)
 {
     /* XXX free correctement en cas d'erreur... */
     int i, c, rc;
-    ht_torrent *elmt;
+    struct torrent *elmt;
     char *url = NULL;
 
-    elmt = calloc(1, sizeof(ht_torrent));
+    elmt = calloc(1, sizeof(struct torrent));
     if(!elmt) {
         perror("ht_load");
         free_benc(raw);

@@ -41,7 +41,7 @@ int notracker = 0;
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
 char *
-generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
+generate_get(char *url, struct torrent *t, char *event, CURL *e_handler)
 {
     int length, rc, have_ipv6;
     char *res, *hash;
@@ -76,7 +76,7 @@ generate_get(char *url, ht_torrent *t, char *event, CURL *e_handler)
 size_t
 writer(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    struct ht_torrent *tor = stream;
+    struct torrent *tor = stream;
     char *p;
     int interval = -1;
 

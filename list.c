@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "tracker.h"
 
 void
-tr_insert(ht_torrent *t, char *url)
+tr_insert(struct torrent *t, char *url)
 {
     tr_list *tmp;
     to_list *to_elmt;
