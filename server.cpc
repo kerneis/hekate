@@ -274,7 +274,7 @@ find_chunk(struct torrent *t, uint64_t begin, unsigned int length,
 
     for(i = 0; i < t->num_files; i++) {
         f = t->files[i];
-        if(f->offset < begin) {
+        if(f->offset <= begin) {
             first = i;
         }
         if(f->offset + f->length >= begin + length) {
