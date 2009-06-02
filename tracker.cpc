@@ -120,7 +120,7 @@ connection(tr_list *t)
 
     e_handle = curl_easy_init();
     if(!e_handle) goto fail;
-
+    cpc_detach;
     for(current = t->head; current; current  = current -> next) {
         request = generate_get(t->url, current->elmt, "started", e_handle);
         if(!request) {
@@ -142,9 +142,7 @@ connection(tr_list *t)
         rc = curl_easy_setopt(e_handle, CURLOPT_WRITEFUNCTION, writer);
         if(rc != CURLE_OK) goto curl_error;
 
-        cpc_detach;
         rc = curl_easy_perform(e_handle);
-        cpc_attach;
         if(rc != CURLE_OK) goto curl_error;
 
         rc = curl_easy_getinfo(e_handle, CURLINFO_RESPONSE_CODE, &http_code);
@@ -172,6 +170,7 @@ connection(tr_list *t)
         e_handle = curl_easy_init();
         if(!e_handle) goto fail;
     }
+    cpc_attach;
 
     curl_easy_cleanup(e_handle);
 
