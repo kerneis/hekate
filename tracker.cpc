@@ -174,10 +174,7 @@ connection(tr_list *t)
 
     curl_easy_cleanup(e_handle);
 
-    /* This printf works around a bug in CPC.  Don't remove it before CPC
-       is fixed! */
-    int tmp = interval > 0 ? interval : 1800;
-    cpc_sleep(tmp);
+    cpc_sleep(interval > 0 ? interval : 1800);
     connection(t);
     return;
 
