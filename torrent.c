@@ -72,12 +72,14 @@ ht_concat_path(struct file *f, char *curr_path, benc *l)
 int
 ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
 {
-    int i, j, c, rc;
+    int i, j, k, c, rc;
     int64_t offset;
     benc *dico;
+    struct file **tmp_files;
     struct file *f;
 
     offset = 0;
+    k = 0;
     for(i=0; i<raw->size; i++) {
         dico = raw->set.l[i];
         if(dico->type != DICT) return -2;
@@ -120,9 +122,23 @@ ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
             }
         }
 
-        offset += f->length;
-        elmt->files[i] = f;
+        if(f->length > 0) {
+            offset += f->length;
+            elmt->files[k++] = f;
+        }
+        else {
+            t->num_files--;
+            free(f->path);
+            free(f);
+        }
     }
+
+    if(i != k) {
+        tmp_files = realloc(t->files, t->num_files*sizeof(struct file *));
+        if(tmp_files)
+            t->files = tmp_files;
+    }
+
     return 0;
 }
 
