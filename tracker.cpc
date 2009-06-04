@@ -100,9 +100,6 @@ writer(void *ptr, size_t size, size_t nmemb, void *stream)
     return nmemb;
 }
 
-/* This works around a bug in CPC. */
-cps void connection(tr_list *t);
-
 cps void
 connection(tr_list *t)
 {
