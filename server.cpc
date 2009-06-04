@@ -383,9 +383,8 @@ send_chunk(int fd, struct chunk *chunk)
         /* For simplicity, we always use a native thread for data that's at
            a chunk border. */
         cpc_detached {
-            int rc = send_multi_chunk(fd, chunk, first, last, offset);
+            return send_multi_chunk(fd, chunk, first, last, offset);
         }
-        return rc;
     }
 
     map_file(peers[fd].t, first);
@@ -413,7 +412,6 @@ send_chunk(int fd, struct chunk *chunk)
                 rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
                 if(rc < 0) {
                     perror("(send_chunk)write");
-                    cpc_attach;
                     return -1;
                 }
             }
