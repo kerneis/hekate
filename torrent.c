@@ -63,10 +63,40 @@ concat_path(struct file *f, char *curr_path, benc *l)
         pos += l->set.l[i]->size;
     }
     path[pos++] = '\0';
-    path = realloc(path, pos);
+    tmp_path = realloc(path, pos);
+    if(tmp_path)
+        path = tmp_path;
 
     f->path = path;
     return 0;
+}
+
+void
+free_torrent(struct torrent *t)
+{
+    int i;
+    struct file *f;
+
+    if(!t)
+        return;
+
+    if(t->info_hash)
+        free(t->info_hash);
+
+    if(t->tracker_url)
+        free(t->tracker_url);
+
+    if(t->files) {
+        for(i = 0; i < t->num_files; i++) {
+            f = t->files[i];
+            if(f) {
+                free(f->path);
+                free(f);
+            }
+        }
+    }
+
+    free(t);
 }
 
 int
@@ -246,14 +276,13 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
 struct torrent *
 parse_torrent(char *curr_path, benc *raw)
 {
-    /* XXX free correctement en cas d'erreur... */
     int i, c, rc;
     struct torrent *elmt;
 
     elmt = calloc(1, sizeof(struct torrent));
     if(!elmt) {
-        perror("(parse_torrent)calloc");
-        goto error;
+        perror("(parse_torrent)caloc");
+        goto internal_error;
     }
 
     if(raw->type != DICT)
@@ -281,7 +310,7 @@ parse_torrent(char *curr_path, benc *raw)
                 if(rc < -1)
                     goto torrent_error;
                 else if(rc < 0)
-                    goto error;
+                    goto internal_error;
                 c = 2;
             }
             break;
@@ -302,10 +331,15 @@ parse_torrent(char *curr_path, benc *raw)
     free_benc(raw);
     return elmt;
 
- torrent_error:
-    fprintf(stderr, "Bad .torrent file.\n");
- error:
-    /* XXX free correctly */
+ internal_error:
+    fprintf(stderr, "Internal error parsing a torrent in %s\n", curr_path);
     free_benc(raw);
+    free_torrent(elmt);
+    return NULL;
+
+ torrent_error:
+    fprintf(stderr, "Bad .torrent file.in %s\n",curr_path);
+    free_benc(raw);
+    free_torrent(elmt);
     return NULL;
 }
