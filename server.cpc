@@ -518,25 +518,26 @@ stream_reader(int fd)
     uint32_t length = 0;
     unsigned char *buff = NULL;
     uint32_t begin, index, chunk_len;
-    int start = 0, end = 0;
+    int start = 0, end = 0, buf_len = 0;
 
     buff = malloc(BUF_LENGTH);
     if(!buff)
         return -1;
 
     while(1){
-        if(end - start < 4) {
-            if(start != end)
-                memmove(buff, buff + start, end - start);
 
-            end = cpc_partial_read(fd, buff + end - start, 4 - end + start, BUF_LENGTH - end + start);
+        buf_len = end - start;
+        if(buf_len < 4) {
+            if(start != end)
+                memmove(buff, buff + start, buf_len);
+
+            end = buf_len + cpc_partial_read(fd, buff + buf_len, 4 - buf_len, BUF_LENGTH - buf_len);
             if(end < 4)
                 goto fail;
             start = 0;
         }
 
         length = ntohl(*(uint32_t *)(buff + start));
-        start += 4;
         if(length == 0) {
             //keepalive message
             continue;
@@ -546,12 +547,14 @@ stream_reader(int fd)
             printf("%3d unbelievably long message (%d bytes).\n", fd, length);
             goto fail;
         }
+        start += 4;
 
-        if(end - start < length){
+        buf_len = end - start;
+        if(buf_len < length){
             if(start != end)
-                memmove(buff, buff + start, end - start);
+                memmove(buff, buff + start, buf_len);
 
-            end = cpc_partial_read(fd, buff + end - start, length - end + start, BUF_LENGTH - end + start);
+            end = buf_len + cpc_partial_read(fd, buff + buf_len, length - buf_len, BUF_LENGTH - buf_len);
             if(end < length)
                 goto fail;
             start = 0;
