@@ -101,7 +101,7 @@ upload(hashtable *table, char *path)
                 result = parsing(buf);
                 memcpy(tmp, result->hash, 20);
 
-                elmt = ht_load(path, result);
+                elmt = parse_torrent(path, result);
                 if(!elmt) continue;
 
                 ht_insert(table, elmt);

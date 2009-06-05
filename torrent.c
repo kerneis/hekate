@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "torrent.h"
 
 int
-ht_concat_path(struct file *f, char *curr_path, benc *l)
+concat_path(struct file *f, char *curr_path, benc *l)
 {
     int i, pos, size;
     char *path, *tmp_path;
@@ -38,7 +38,7 @@ ht_concat_path(struct file *f, char *curr_path, benc *l)
     size = (pos + 1) > 256 ? (pos + 1) : 256;
     path = malloc(size);
     if(!path) {
-        perror("(ht_concat_path)malloc");
+        perror("(concat_path)malloc");
         return -1;
     }
     memcpy(path, curr_path, pos);
@@ -54,7 +54,7 @@ ht_concat_path(struct file *f, char *curr_path, benc *l)
             size *= 2;
             tmp_path = realloc(path, size);
             if(!tmp_path) {
-                perror("(ht_concat_path)realloc");
+                perror("(concat_path)realloc");
                 free(path);
                 return -1;
             }
@@ -70,7 +70,7 @@ ht_concat_path(struct file *f, char *curr_path, benc *l)
 }
 
 int
-ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
+parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, j, k, c, rc;
     int64_t offset;
@@ -86,7 +86,7 @@ ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
 
         f = malloc(sizeof(struct file));
         if(!f) {
-            perror("(ht_files_load)malloc");
+            perror("(parse_files)malloc");
             return -1;
         }
 
@@ -111,7 +111,7 @@ ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
             case 1:
                 if(strcmp((dico->set.l[j])->s, "path") == 0 &&
                    (dico->set.l[j+1])->type == LIST) {
-                    rc = ht_concat_path(f, curr_path, dico->set.l[j+1]);
+                    rc = concat_path(f, curr_path, dico->set.l[j+1]);
                     if(rc<0) return rc;
                     c = 2;
                 }
@@ -127,16 +127,16 @@ ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
             elmt->files[k++] = f;
         }
         else {
-            t->num_files--;
+            elmt->num_files--;
             free(f->path);
             free(f);
         }
     }
 
     if(i != k) {
-        tmp_files = realloc(t->files, t->num_files*sizeof(struct file *));
+        tmp_files = realloc(elmt->files, elmt->num_files*sizeof(struct file *));
         if(tmp_files)
-            t->files = tmp_files;
+            elmt->files = tmp_files;
     }
 
     return 0;
@@ -144,15 +144,14 @@ ht_files_load(struct torrent *elmt, char *curr_path, benc *raw)
 
 
 int
-ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
+parse_info(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, c, rc, path_length;
     char *path = NULL;
     benc *multi_files = NULL;
 
-    c=0; /* Use the fact that dictionnary are sorted */
+    c = 0; /* Use the fact that dictionnary are sorted */
     for(i=0; i<raw->size; i+=2) {
-
         if((raw->set.l[i])->type != STRING) {
             return -2;
         }
@@ -164,12 +163,12 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
                (raw->set.l[i+1])->type == INT) {
                 elmt->files = malloc(sizeof(struct file *));
                 if(!elmt->files){
-                    perror("(ht_info_load)malloc files");
+                    perror("(parse_info)malloc files");
                     return -1;
                 }
                 elmt->files[0] = calloc(1, sizeof(struct file));
                 if(!elmt->files[0]){
-                    perror("(ht_info_load)malloc files");
+                    perror("(parse_info)calloc file");
                     return -1;
                 }
 
@@ -183,7 +182,7 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
                 elmt->num_files = raw->set.l[i+1]->size;
                 elmt->files = calloc(elmt->num_files, sizeof(struct file *));
                 if(!elmt->files){
-                    perror("(ht_info_load)malloc files");
+                    perror("(parse_info)calloc files");
                     return -1;
                 }
                 /* we need to know p_length */
@@ -198,7 +197,7 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
                 path_length = raw->set.l[i+1]->size + strlen(curr_path) + 2;
                 path = malloc(path_length);
                 if(!path) {
-                    perror("(ht_info_load)malloc");
+                    perror("(parse_info)malloc");
                     return -1;
                 }
                 snprintf(path, path_length, "%s/%s",
@@ -220,7 +219,7 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
 
                 /* now we can compute chunks offsets */
                 if(multi_files) {
-                    rc = ht_files_load(elmt, path, multi_files);
+                    rc = parse_files(elmt, path, multi_files);
                     free(path);
                     if(rc<0) return rc;
                 }
@@ -245,7 +244,7 @@ ht_info_load(struct torrent *elmt, char *curr_path, benc *raw)
 }
 
 struct torrent *
-ht_load(char *curr_path, benc *raw)
+parse_torrent(char *curr_path, benc *raw)
 {
     /* XXX free correctement en cas d'erreur... */
     int i, c, rc;
@@ -253,14 +252,14 @@ ht_load(char *curr_path, benc *raw)
 
     elmt = calloc(1, sizeof(struct torrent));
     if(!elmt) {
-        perror("ht_load");
+        perror("(parse_torrent)calloc");
         goto error;
     }
 
     if(raw->type != DICT)
         goto torrent_error;
 
-    c=0; /* Use the fact that dictionnary are sorted */
+    c = 0; /* Use the fact that dictionnary are sorted */
     for(i=0; i<raw->size; i+=2) {
         if((raw->set.l[i])->type != STRING)
             goto torrent_error;
@@ -271,19 +270,19 @@ ht_load(char *curr_path, benc *raw)
                (raw->set.l[i+1])->type == STRING) {
                 elmt->tracker_url = (raw->set.l[i+1])->s;
                 raw->set.l[i+1]->s = NULL;
-                c++;
+                c = 1;
             }
             break;
 
         case 1:
             if(strcmp((raw->set.l[i])->s, "info") == 0 &&
                (raw->set.l[i+1])->type == DICT ) {
-                rc = ht_info_load(elmt, curr_path, raw->set.l[i+1]);
+                rc = parse_info(elmt, curr_path, raw->set.l[i+1]);
                 if(rc < -1)
                     goto torrent_error;
                 else if(rc < 0)
                     goto error;
-                c++;
+                c = 2;
             }
             break;
 
