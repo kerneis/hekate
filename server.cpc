@@ -94,44 +94,6 @@ send_message_2(int fd, int id,
     return 1;
 }
 
-int
-send_message_2_d(int fd, int id,
-                 char *body1, int bodylen1, char *body2, int bodylen2)
-{
-    unsigned char buf[5];
-    struct iovec iov[3];
-    int i, rc;
-
-    printf("%3d -> type = %d, length = %d\n", fd, id, bodylen1 + bodylen2 + 1);
-
-    *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
-    buf[4] = id;
-
-    i = 0;
-
-    iov[i].iov_base = buf;
-    iov[i].iov_len = 5;
-    i++;
-
-    if(bodylen1 > 0) {
-        iov[i].iov_base = body1;
-        iov[i].iov_len = bodylen1;
-        i++;
-    }
-
-    if(bodylen2 > 0) {
-        iov[i].iov_base = body2;
-        iov[i].iov_len = bodylen2;
-        i++;
-    }
-
-    rc = cpc_d_full_writev(fd, iov, i);
-    if(rc < 5)
-        return -1;
-
-    return 1;
-}
-
 cps int
 send_message(int fd, int id, char *body, int bodylen)
 {
@@ -311,7 +273,7 @@ find_chunk(struct torrent *t, uint64_t begin, unsigned int length,
     return 1;
 }
 
-int
+cps int
 send_multi_chunk(int fd, struct chunk *chunk,
                  int first, int last, unsigned offset)
 {
@@ -350,7 +312,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
 
     /* pos may be smaller than chunk->length, if the chunk extended beyond
        the end of the torrent. */
-    rc = send_message_2_d(fd, 7, buf, 8, body, pos);
+    rc = send_message_2(fd, 7, buf, 8, body, pos);
     if(rc < 0) {
         perror("(send_chunk)write");
         goto fail;
@@ -448,7 +410,7 @@ send_chunk(int fd, struct chunk *chunk)
         if(!incore(source, chunk->length)) {
             /* Still not in core.  Use a native thread to avoid blocking. */
             cpc_detached {
-                rc = send_message_2_d(fd, 7, buf, 8, source, chunk->length);
+                rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
                 if(rc < 0) {
                     perror("(send_chunk)write");
                     cpc_attach;

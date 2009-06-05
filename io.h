@@ -24,5 +24,3 @@ cps int cpc_full_read(int fd, char *buf, int len);
 cps int cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len);
 cps int cpc_full_write(int fd, const char *buf, int len);
 cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
-int cpc_d_io_wait(int fd, int direction);
-int cpc_d_full_writev(int fd, const struct iovec *iov, int iovcnt);
