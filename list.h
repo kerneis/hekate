@@ -45,14 +45,6 @@ typedef struct chunk {
     struct chunk *next;
 } chunk;
 
-typedef struct peer {
-    int stream_writer;
-    struct torrent *t;
-    int credit;
-    struct chunk *list;
-} peer;
-
-
 void tr_insert(struct torrent *t);
 struct chunk *add_chunk(struct chunk *l, int64_t offset, int begin, int length);
 struct chunk *remove_chunk(struct chunk *l, int offset, int begin, int length);
