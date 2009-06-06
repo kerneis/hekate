@@ -47,6 +47,8 @@ THE SOFTWARE.
 #define DIR_LEN 512
 #define FD_MAX 1024
 
+cpc_condvar *choke_cond;
+
 int numpeers = 0;
 #define MAX_CONNECTED_PEERS 512
 
@@ -360,7 +362,8 @@ send_chunk(int fd, struct chunk *chunk)
             if(rc < 0)
                 return -1;
             free_chunks(fd);
-            cpc_sleep(1);
+            cpc_signal(choke_cond);
+            cpc_wait(choke_cond);
             rc = send_unchoke(fd);
             if(rc < 0)
                 return -1;
@@ -682,6 +685,9 @@ client(hashtable *t, int client_fd)
         goto done;
     }
 
+    if(numpeers > MAX_CONNECTED_PEERS / 10)
+        cpc_wait(choke_cond);
+
     rc = send_unchoke(client_fd);
     if(rc < 0) {
         fprintf(stderr, "couldn't send unchoke\n");
@@ -700,6 +706,7 @@ client(hashtable *t, int client_fd)
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
     numpeers--;
+    cpc_signal(choke_cond);
     close(client_fd);
     return;
 }
@@ -746,6 +753,8 @@ listening(hashtable * table)
         return;
     }
 
+    choke_cond = cpc_condvar_get();
+
     while(1) {
         cpc_io_wait(socket_fd, CPC_IO_IN);
 
@@ -788,6 +797,7 @@ listening(hashtable * table)
 
     fail:
         close(client_fd);
+        cpc_condvar_release(choke_cond);
         continue;
     }
 
