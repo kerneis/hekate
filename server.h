@@ -24,6 +24,13 @@ THE SOFTWARE.
 #ifndef SERVER_H
 #define SERVER_H
 
-cps int listening(hashtable * table);
+typedef struct peer {
+    cpc_condvar *sw_cond;
+    struct torrent *t;
+    int credit;
+    struct chunk *list;
+} peer;
+
+cps void listening(hashtable * table);
 
 #endif
