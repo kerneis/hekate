@@ -537,6 +537,9 @@ stream_reader(int fd)
         }
 
         length = ntohl(*(uint32_t *)(buff + start));
+
+        start += 4;
+
         if(length == 0) {
             //keepalive message
             continue;
@@ -546,7 +549,6 @@ stream_reader(int fd)
             printf("%3d unbelievably long message (%d bytes).\n", fd, length);
             goto fail;
         }
-        start += 4;
 
         buf_len = end - start;
         if(buf_len < length){
