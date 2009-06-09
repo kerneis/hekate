@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include <errno.h>
 #include <sys/uio.h>
 #include <poll.h>
+#include <assert.h>
 
 #include "io.h"
 
