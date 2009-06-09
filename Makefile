@@ -1,7 +1,9 @@
 CPC=cpc.asm.exe
 
 CLIBS=-lcurl
-CFLAGS=-D_GNU_SOURCE -O3 -Wall -g $(CLIBS)
+CDEBUGFLAGS=-O3 -Wall -g
+CFLAGS=$(CDEBUGFLAGS) $(CLIBS) $(EXTRA_DEFINES)
+
 
 LDLIBS=-lcurl -lm -pthread -lcpcfull
 
