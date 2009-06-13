@@ -143,7 +143,7 @@ send_message_h(int fd, char *head, int headlen,
 cps int
 send_bitfield(int fd, struct torrent *t, char *head, int headlen)
 {
-    int num_chunks = 0, length = 0;
+    int length = 0;
     unsigned char *buf= NULL;
     int rc;
 
@@ -156,10 +156,10 @@ send_bitfield(int fd, struct torrent *t, char *head, int headlen)
     }
 
     memset(buf, 0xFF, length - 1);
-    if(num_chunks % 8 == 0)
+    if(t->num_chunks % 8 == 0)
         buf[length - 1] = 0xFF;
     else
-        buf[length - 1] = (0xFF00 >> (num_chunks % 8)) & 0xFF;
+        buf[length - 1] = (0xFF00 >> (t->num_chunks % 8)) & 0xFF;
 
     rc = send_message_h(fd, head, headlen, 5, buf, length);
     if(rc < 0) {
