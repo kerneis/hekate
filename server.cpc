@@ -530,9 +530,10 @@ stream_reader(int fd)
             if(start != end)
                 memmove(buff, buff + start, buf_len);
 
-            end = buf_len + cpc_partial_read(fd, buff + buf_len, 4 - buf_len, BUF_LENGTH - buf_len);
+            end = cpc_partial_read(fd, buff + buf_len, 4 - buf_len, BUF_LENGTH - buf_len);
             if(end < 4)
                 goto fail;
+            end += buf_len;
             start = 0;
         }
 
@@ -555,9 +556,10 @@ stream_reader(int fd)
             if(start != end)
                 memmove(buff, buff + start, buf_len);
 
-            end = buf_len + cpc_partial_read(fd, buff + buf_len, length - buf_len, BUF_LENGTH - buf_len);
+            end = cpc_partial_read(fd, buff + buf_len, length - buf_len, BUF_LENGTH - buf_len);
             if(end < length)
                 goto fail;
+            end += buf_len;
             start = 0;
         }
 
