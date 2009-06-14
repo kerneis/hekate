@@ -150,7 +150,7 @@ main(int argc, char **argv)
 
     pagesize = getpagesize();
 
-    strcpy(peer_id, "-CP0000-");
+    strcpy(peer_id, "-HK0000-");
     fd = open("/dev/urandom", O_RDONLY);
     if(fd < 0) {
         perror("open(random)");
