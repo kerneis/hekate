@@ -602,6 +602,10 @@ stream_reader(int fd)
             index = ntohl(*((uint32_t *)(&(buff[start])+1)));
             begin = ntohl(*((uint32_t *)(&(buff[start])+5)));
             chunk_len = ntohl(*((uint32_t *)(&(buff[start])+9)));
+            if(chunk_len == 0){
+                fprintf(stderr, "Request length is zero.\n");
+                goto fail;
+            }
             printf("%3d %s: index = %u\tbegin = %u\tlength = %u\n",
                    fd, buff[start] == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
