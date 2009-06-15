@@ -594,8 +594,10 @@ stream_reader(int fd)
 
         case 6:                     //request
         case 8:                     //cancel
-            if(length < 13)
-                goto fail;;
+            if(length < 13) {
+                fprintf(stderr, "Too short message.\n");
+                goto fail;
+            }
             index = ntohl(*((uint32_t *)(&(buff[start])+1)));
             begin = ntohl(*((uint32_t *)(&(buff[start])+5)));
             chunk_len = ntohl(*((uint32_t *)(&(buff[start])+9)));
@@ -614,8 +616,10 @@ stream_reader(int fd)
                                 index * peers[fd].t->p_length + begin,
                                 chunk_len,
                                 &first, &last, &offset, &last_len);
-                if(rc < 0)
+                if(rc < 0) {
+                    fprintf(stderr, "find_chunk fail.\n");
                     goto fail;
+                }
                 peers[fd].list = add_chunk(peers[fd].list,
                                            index, begin, chunk_len);
                 for(i = first; i <= last; i++) {
