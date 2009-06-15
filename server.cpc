@@ -526,6 +526,7 @@ stream_reader(int fd)
     while(1){
 
         buf_len = end - start;
+        assert(buf_len >= 0);
         if(buf_len < 4) {
             if(start != end)
                 memmove(buff, buff + start, buf_len);
@@ -538,6 +539,7 @@ stream_reader(int fd)
         }
 
         length = ntohl(*(uint32_t *)(buff + start));
+        assert(length >= 0);
 
         start += 4;
 
@@ -552,13 +554,17 @@ stream_reader(int fd)
         }
 
         buf_len = end - start;
+        assert(buf_len >= 0);
         if(buf_len < length){
             if(start != end)
                 memmove(buff, buff + start, buf_len);
 
             end = cpc_partial_read(fd, buff + buf_len, length - buf_len, BUF_LENGTH - buf_len);
-            if(end < length)
+            /* XXX Do not remove the first comparison, since len is
+             * implicitely cast to an UNSIGNED int in the second one. */
+            if(end < 0 || end < length)
                 goto fail;
+            assert(end > 0);
             end += buf_len;
             start = 0;
         }
