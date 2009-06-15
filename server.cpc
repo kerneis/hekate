@@ -454,9 +454,17 @@ handshake(hashtable *ht , int fd)
 
     torrent = ht_get(ht, t + 28);
     if(!torrent) {
-        fprintf(stderr, "(handshake) : cannot find the hash in the table\n");
+        fprintf(stderr, "(handshake): cannot find the following hash in the table");
+        for(int i = 0;i<20;i++)
+            fprintf(stderr, "%.2x", (unsigned char)*(t + 28 + i));
+        fprintf(stderr, "\n");
         return -1;
     }
+
+    printf("%3d Torrent requested: ", fd);
+    for(int i = 0;i<20;i++)
+        printf("%.2x", (unsigned char)*(t + 28 + i));
+    printf("\n");
 
     peers[fd].t = torrent;
     peers[fd].credit = MAX_PEER_CREDIT;
