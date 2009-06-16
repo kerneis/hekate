@@ -110,7 +110,7 @@ connection(tr_list *t, int ipv6, char *event)
     e_handle = curl_easy_init();
     if(!e_handle) goto fail;
     cpc_detach;
-    for(current = t->head; current; current  = current -> next) {
+    for(current = t->head; current; current = current->next) {
         request = generate_get(t->url, current->elmt, event, e_handle);
         if(!request) {
             perror("(connection)generate_get");
