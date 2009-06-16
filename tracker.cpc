@@ -152,7 +152,7 @@ connection(tr_list *t, int ipv6, char *event)
         continue;
 
     curl_error:
-        if(!ipv6)
+        if(noipv4 || !ipv6)
             fprintf(stderr, "curl error: %s (%s)\n",
                     curl_easy_strerror(rc), request);
         free(request);
