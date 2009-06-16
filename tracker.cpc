@@ -120,8 +120,6 @@ connection(tr_list *t, int ipv6)
         rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
         if(rc != CURLE_OK) goto curl_error;
 
-        /* The protocol for double-stack torrents is pretty broken; the
-           ``&ip='' hack cannot work.  Just disable IPv6 for now. */
         rc = curl_easy_setopt(e_handle, CURLOPT_IPRESOLVE,
                               ipv6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_V4);
         if(rc != CURLE_OK) goto curl_error;
