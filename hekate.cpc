@@ -133,12 +133,18 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "t");
+        opt = getopt(argc, argv, "t46");
         if(opt == -1)
             break;
         switch(opt) {
         case 't':
             notracker = 1;
+            break;
+        case '4':
+            noipv6 = 1;
+            break;
+        case '6':
+            noipv4 = 1;
             break;
         default:
             goto usage;

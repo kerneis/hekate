@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 #include "list.h"
 
-extern int notracker;
+extern int notracker, noipv4, noipv6;
 
 char *port;
 extern char peer_id[21];
