@@ -37,6 +37,8 @@ THE SOFTWARE.
 char peer_id[21];
 char *port = "6969";
 int notracker = 0;
+int noipv4 = 0;
+int noipv6 = 0;
 
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
@@ -91,7 +93,7 @@ writer(void *ptr, size_t size, size_t nmemb, void *stream)
 }
 
 cps void
-connection(tr_list *t)
+connection(tr_list *t, int ipv6)
 {
     CURLcode rc = NULL;
     CURL *e_handle = NULL;
@@ -120,7 +122,8 @@ connection(tr_list *t)
 
         /* The protocol for double-stack torrents is pretty broken; the
            ``&ip='' hack cannot work.  Just disable IPv6 for now. */
-        rc = curl_easy_setopt(e_handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        rc = curl_easy_setopt(e_handle, CURLOPT_IPRESOLVE,
+                              ipv6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_V4);
         if(rc != CURLE_OK) goto curl_error;
 
         rc = curl_easy_setopt(e_handle, CURLOPT_WRITEDATA, current->elmt);
@@ -147,28 +150,30 @@ connection(tr_list *t)
             else
                 interval = MAX(interval, current->elmt->update_interval);
         }
+
         continue;
 
     curl_error:
-        fprintf(stderr, "curl error: %s (%s)\n",
-                curl_easy_strerror(rc), request);
+        if(!ipv6)
+            fprintf(stderr, "curl error: %s (%s)\n",
+                    curl_easy_strerror(rc), request);
         free(request);
+
         curl_easy_cleanup(e_handle);
         e_handle = curl_easy_init();
         if(!e_handle) goto fail;
     }
     cpc_attach;
-
     curl_easy_cleanup(e_handle);
 
     cpc_sleep(interval > 0 ? interval : 1800);
-    connection(t);
+    connection(t, ipv6);
     return;
 
  fail:
     fprintf(stderr, "Couldn't allocate CURL request.\n");
     cpc_sleep(interval > 0 ? interval : 1800);
-    connection(t);
+    connection(t, ipv6);
 }
 
 void
@@ -185,7 +190,10 @@ init_trackers()
     current = trackers;
 
     while(current) {
-        cpc_spawn connection(current);
+        if(!noipv4)
+            cpc_spawn connection(current, 0);
+        if(!noipv6)
+            cpc_spawn connection(current, 1);
         current = current -> next;
     }
 }
