@@ -721,6 +721,8 @@ client(hashtable *t, int client_fd)
     cpc_barrier_await(peers[client_fd].barrier);
 
     free_chunks(client_fd);
+    peers[client_fd].t = NULL;
+
     cpc_condvar_release(peers[client_fd].sw_cond);
 
     numpeers--;
