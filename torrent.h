@@ -48,6 +48,8 @@ struct torrent {
     char *tracker_url;
 
     int update_interval;
+
+    uint64_t uploaded;
 };
 
 struct torrent * ht_load(char *curr_path, benc *raw);
