@@ -32,10 +32,10 @@ THE SOFTWARE.
 
 #include "list.h"
 #include "torrent.h"
+#include "server.h"
 #include "tracker.h"
 
 char peer_id[21];
-char *port = "6969";
 int notracker = 0;
 int noipv4 = 0;
 int noipv6 = 0;
@@ -54,10 +54,10 @@ generate_get(char *url, struct torrent *t, char *event, CURL *e_handler)
         return NULL;
     }
 
-    rc = asprintf(&res, "%s%cinfo_hash=%s&peer_id=%.20s&port=%s&"
+    rc = asprintf(&res, "%s%cinfo_hash=%s&peer_id=%.20s&port=%d&"
                   "uploaded=0&downloaded=0&left=0%s%s"
                   "&compact=1&numwant=1&no_peer_id=1",
-                  url, strchr(url, '?') ? '&' : '?', hash, peer_id, port,
+                  url, strchr(url, '?') ? '&' : '?', hash, peer_id, peer_port,
                   event ? "&event=" : "", event ? event : NULL);
     if(rc < 0)
         res = NULL;

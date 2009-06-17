@@ -26,6 +26,8 @@ THE SOFTWARE.
 
 #include <cpc/cpc_lib.h>
 
+extern int peer_port;
+
 typedef struct peer {
     cpc_condvar *sw_cond;
     cpc_barrier *barrier;
