@@ -33,6 +33,8 @@ THE SOFTWARE.
 #include <fcntl.h>
 #include <assert.h>
 
+#include <cpc/cpc_lib.h>
+
 #include "util.h"
 #include "hashtable.h"
 #include "parse.h"
@@ -370,7 +372,6 @@ send_chunk(int fd, struct chunk *chunk)
         } else {
             /* Drop this client connection, so that others get a chance. */
             printf("%3d dropping\n", fd);
-            shutdown(fd, 2);
             return -1;
         }
     }
@@ -517,7 +518,7 @@ stream_writer(int fd)
     int rc;
 
     while(1) {
-        while(!peers[fd].list)
+        if(!peers[fd].list)
             cpc_wait(peers[fd].sw_cond);
 
         chunk = peers[fd].list;
@@ -525,10 +526,14 @@ stream_writer(int fd)
         peers[fd].list = peers[fd].list->next;
         rc = send_chunk(fd, chunk);
         if(rc < 0)
-            shutdown(fd, 2);    /* for now */
+            goto done;
         free(chunk);
         cpc_yield;
     }
+
+ done:
+    shutdown(fd, 2);
+    cpc_barrier_await(peers[fd].barrier);
 }
 
 cps int
@@ -688,6 +693,11 @@ client(hashtable *t, int client_fd)
     int rc = 0;
     unsigned char buffer[BUF_LENGTH];
 
+    peers[client_fd].sw_cond = cpc_condvar_get();
+    peers[client_fd].barrier = cpc_barrier_get(2);
+
+    cpc_spawn stream_writer(client_fd);
+
     rc = handshake(t, client_fd);
     if(rc < 0) {
         fprintf(stderr,"(client)broken handshake -- dropping.\n");
@@ -700,21 +710,22 @@ client(hashtable *t, int client_fd)
     rc = send_unchoke(client_fd);
     if(rc < 0) {
         fprintf(stderr, "couldn't send unchoke\n");
-        goto done;
-    }
-
-    if(!peers[client_fd].sw_cond) {
-        peers[client_fd].sw_cond = cpc_condvar_get();
-        cpc_spawn stream_writer(client_fd);
+        return;
     }
 
     rc = stream_reader(client_fd);
 
  done:
+    shutdown(client_fd, 2);
+    cpc_signal(peers[client_fd].sw_cond);
+    cpc_barrier_await(peers[client_fd].barrier);
+
     free_chunks(client_fd);
-    peers[client_fd].t = NULL;
+    cpc_condvar_release(peers[client_fd].sw_cond);
+
     numpeers--;
     cpc_signal(choke_cond);
+
     close(client_fd);
     return;
 }

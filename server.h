@@ -24,8 +24,11 @@ THE SOFTWARE.
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <cpc/cpc_lib.h>
+
 typedef struct peer {
     cpc_condvar *sw_cond;
+    cpc_barrier *barrier;
     struct torrent *t;
     int credit;
     struct chunk *list;
