@@ -21,8 +21,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+extern int debug_level;
 extern size_t pagesize;
 
+void debugf(int level, const char *format, ...);
 int prefetch(void *begin, size_t length);
 int incore(void *begin, size_t length);
 int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
