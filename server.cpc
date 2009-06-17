@@ -700,7 +700,7 @@ client(hashtable *t, int client_fd)
     rc = send_unchoke(client_fd);
     if(rc < 0) {
         fprintf(stderr, "couldn't send unchoke\n");
-        return;
+        goto done;
     }
 
     if(!peers[client_fd].sw_cond) {
