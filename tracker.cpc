@@ -55,9 +55,10 @@ generate_get(char *url, struct torrent *t, char *event, CURL *e_handler)
     }
 
     rc = asprintf(&res, "%s%cinfo_hash=%s&peer_id=%.20s&port=%d&"
-                  "uploaded=0&downloaded=0&left=0%s%s"
+                  "uploaded=%uld&downloaded=0&left=0%s%s"
                   "&compact=1&numwant=1&no_peer_id=1",
                   url, strchr(url, '?') ? '&' : '?', hash, peer_id, peer_port,
+                  (unsigned long)t->uploaded,
                   event ? "&event=" : "", event ? event : NULL);
     if(rc < 0)
         res = NULL;

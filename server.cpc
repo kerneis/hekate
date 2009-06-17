@@ -325,6 +325,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
         goto fail;
     }
 
+    t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
 
@@ -431,6 +432,7 @@ send_chunk(int fd, struct chunk *chunk)
     }
 
  done:
+    t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
 
