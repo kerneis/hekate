@@ -20,7 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -32,7 +34,20 @@ THE SOFTWARE.
 
 #include "util.h"
 
+int debug_level = 0;
 size_t pagesize;
+
+void
+debugf(int level, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    if(debug_level >= level) {
+        vfprintf(stderr, format, args);
+        fflush(stderr);
+    }
+    va_end(args);
+}
 
 int
 prefetch(void *begin, size_t length)
