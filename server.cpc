@@ -70,7 +70,8 @@ send_message_2(int fd, int id,
     struct iovec iov[3];
     int i, rc;
 
-    printf("%3d -> type = %d, length = %d\n", fd, id, bodylen1 + bodylen2 + 1);
+    debugf(4, "%3d -> type = %d, length = %d\n",
+           fd, id, bodylen1 + bodylen2 + 1);
 
     *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
     buf[4] = id;
@@ -114,7 +115,7 @@ send_message_h(int fd, char *head, int headlen,
     struct iovec iov[3];
     int i, rc;
 
-    printf("%3d -> h=%d, type = %d, length = %d\n",
+    debugf(4, "%3d -> h=%d, type = %d, length = %d\n",
            fd, headlen, id, bodylen + 1);
 
     *(uint32_t*)buf = htonl(bodylen + 1);
@@ -309,7 +310,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
         pos += len;
     }
 
-    printf("%3d send chunk: length=%d, offset=%lld\n",
+    debugf(3, "%3d send chunk: length=%d, offset=%lld\n",
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
@@ -347,18 +348,18 @@ send_chunk(int fd, struct chunk *chunk)
     struct file *f;
 
     if(chunk->length > MAX_PEER_CREDIT) {
-        fprintf(stderr, "Chunk larger than max credit!\n");
+        debugf(1, "Chunk larger than max credit!\n");
         return -1;
     }
 
     if(peers[fd].credit < chunk->length) {
         if(numpeers <= 1 + MAX_CONNECTED_PEERS / 10) {
             /* We've got very few peers, replenish. */
-            printf("%3d replenish\n", fd);
+            debugf(2, "%3d replenish\n", fd);
             peers[fd].credit = MAX_PEER_CREDIT;
         } else if(numpeers < MAX_CONNECTED_PEERS) {
             /* Our queue is not full yet, choke this client for a small time. */
-            printf("%3d temporary choke\n", fd);
+            debugf(2, "%3d temporary choke\n", fd);
             rc = send_choke(fd);
             if(rc < 0)
                 return -1;
@@ -371,7 +372,7 @@ send_chunk(int fd, struct chunk *chunk)
             peers[fd].credit = MAX_PEER_CREDIT;
         } else {
             /* Drop this client connection, so that others get a chance. */
-            printf("%3d dropping\n", fd);
+            debugf(2, "%3d dropping\n", fd);
             return -1;
         }
     }
@@ -399,7 +400,7 @@ send_chunk(int fd, struct chunk *chunk)
 
     source = peers[fd].t->files[first]->map + offset;
 
-    printf("%3d send chunk: length=%d, offset=%lld\n",
+    debugf(3, "%3d send chunk: length=%d, offset=%lld\n",
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
@@ -455,7 +456,7 @@ handshake(hashtable *ht , int fd)
     }
 
     if(memcmp(t, protocol, 20) != 0) {
-        fprintf(stderr, "(handshake)bad protocol.\n");
+        debugf(1, "(handshake)bad protocol.\n");
         return -1;
     }
 
@@ -468,10 +469,10 @@ handshake(hashtable *ht , int fd)
         return -1;
     }
 
-    printf("%3d Torrent requested: ", fd);
+    debugf(2, "%3d Torrent requested: ", fd);
     for(int i = 0;i<20;i++)
-        printf("%.2x", (unsigned char)*(t + 28 + i));
-    printf("\n");
+        debugf(1, "%.2x", (unsigned char)*(t + 28 + i));
+    debugf(1, "\n");
 
     peers[fd].t = torrent;
     peers[fd].credit = MAX_PEER_CREDIT;
@@ -574,7 +575,8 @@ stream_reader(int fd)
         }
 
         if(length > 128 * 1024) {
-            printf("%3d unbelievably long message (%d bytes).\n", fd, length);
+            fprintf(stderr,
+                    "%3d unbelievably long message (%d bytes).\n", fd, length);
             goto fail;
         }
 
@@ -594,10 +596,10 @@ stream_reader(int fd)
             start = 0;
         }
 
-        printf("%3d <- type = %d, length = %d\n", fd, buff[start], length);
+        debugf(4, "%3d <- type = %d, length = %d\n", fd, buff[start], length);
 
         if(buff[start] != 5 && length > 20) {
-            printf("%3d unbelievably long message!\n", fd);
+            fprintf(stderr, "%3d unbelievably long message!\n", fd);
             goto fail;
         }
 
@@ -606,13 +608,13 @@ stream_reader(int fd)
             break;
 
         case 3:                     //not interested
-            printf("%3d not interested\n", fd);
+            debugf(3, "%3d not interested\n", fd);
             goto fail;
 
         case 6:                     //request
         case 8:                     //cancel
             if(length < 13) {
-                fprintf(stderr, "Too short message.\n");
+                fprintf(stderr, "Message too short.\n");
                 goto fail;
             }
             index = ntohl(*((uint32_t *)(&(buff[start])+1)));
@@ -622,7 +624,7 @@ stream_reader(int fd)
                 fprintf(stderr, "Request length is zero.\n");
                 goto fail;
             }
-            printf("%3d %s: index = %u\tbegin = %u\tlength = %u\n",
+            debugf(3, "%3d %s: index = %u\tbegin = %u\tlength = %u\n",
                    fd, buff[start] == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
             if(chunk_len > 1024 * 1024) {
@@ -700,7 +702,7 @@ client(hashtable *t, int client_fd)
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
-        fprintf(stderr,"(client)broken handshake -- dropping.\n");
+        debugf(1, "(client)broken handshake -- dropping.\n");
         goto done;
     }
 
@@ -788,7 +790,7 @@ listening(hashtable * table)
             cpc_sleep(1);
             continue;
         }
-        fprintf(stderr,"Got a connection!\n");
+        debugf(2, "Accepted connection %d!\n", client_fd);
         assert(!peers[client_fd].t);
 
         /* XXX */
