@@ -133,7 +133,7 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "t46");
+        opt = getopt(argc, argv, "t46d:");
         if(opt == -1)
             break;
         switch(opt) {
@@ -145,6 +145,9 @@ main(int argc, char **argv)
             break;
         case '6':
             noipv4 = 1;
+            break;
+        case 'd':
+            debug_level = atoi(optarg);
             break;
         default:
             goto usage;
