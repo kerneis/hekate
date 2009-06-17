@@ -518,7 +518,7 @@ stream_writer(int fd)
     int rc;
 
     while(1) {
-        if(!peers[fd].list)
+        while(!peers[fd].list)
             cpc_wait(peers[fd].sw_cond);
 
         chunk = peers[fd].list;
