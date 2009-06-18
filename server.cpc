@@ -544,6 +544,7 @@ handshake(hashtable *ht , int fd)
     tmp += 20;
 
     rc = send_bitfield(fd, torrent, res, 68);
+    free(res);
     if(rc < 0)
         return -1;
 
