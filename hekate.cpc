@@ -141,9 +141,13 @@ main(int argc, char **argv)
             notracker = 1;
             break;
         case '4':
+            if(noipv4 == 1)
+                goto usage;
             noipv6 = 1;
             break;
         case '6':
+            if(noipv6 == 1)
+                goto usage;
             noipv4 = 1;
             break;
         case 'p':
