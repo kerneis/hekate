@@ -121,6 +121,12 @@ connection(tr_list *t, int ipv6, char *event)
         rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
         if(rc != CURLE_OK) goto curl_error;
 
+        rc = curl_easy_setopt(e_handle, CURLOPT_FOLLOWLOCATION, 1);
+        if(rc != CURLE_OK) goto curl_error;
+
+        rc = curl_easy_setopt(e_handle, CURLOPT_MAXREDIRS, 8);
+        if(rc != CURLE_OK) goto curl_error;
+
         rc = curl_easy_setopt(e_handle, CURLOPT_IPRESOLVE,
                               ipv6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_V4);
         if(rc != CURLE_OK) goto curl_error;
