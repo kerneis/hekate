@@ -393,9 +393,11 @@ send_chunk(int fd, struct chunk *chunk)
 
     if(peers[fd].credit < chunk->length) {
         if(numpeers <= maxunchoked) {
-            /* replenish straight away. */
+            /* replenish straight away, but yield to give other peers
+               a chance in case we're sender-limited. */
             debugf(2, "%3d replenish\n", fd);
             peers[fd].credit = initial_credit;
+            cpc_yield;
         } else {
             /* Choke even if we're going to shut this connection now,
                since we're not doing lingering close yet. */
