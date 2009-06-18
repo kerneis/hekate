@@ -32,6 +32,8 @@ typedef struct peer {
     cpc_condvar *sw_cond;
     cpc_barrier *barrier;
     struct torrent *t;
+    int dying;
+    int unchoked;
     int credit;
     struct chunk *list;
 } peer;
