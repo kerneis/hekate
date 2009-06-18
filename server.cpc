@@ -430,8 +430,8 @@ send_chunk(int fd, struct chunk *chunk)
     }
 
     if(first != last) {
-        /* For simplicity, we always use a native thread for data that's at
-           a chunk border. */
+        /* For simplicity, we always use a native thread for data that
+           spans multiple files. */
         cpc_detached {
             return send_multi_chunk(fd, chunk, first, last, offset);
         }
