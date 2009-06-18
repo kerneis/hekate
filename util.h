@@ -24,6 +24,32 @@ THE SOFTWARE.
 extern int debug_level;
 extern size_t pagesize;
 
+/* This would be better written with the GCC extensions for unaligned
+   access, but CPC cannot parse GCC attributes right now. */
+#if defined(i386) || defined(__mc68020__) || defined(__x86_64__)
+#define DO_NTOHS(_d, _s) do { _d = ntohs(*(unsigned short*)(_s)); } while(0)
+#define DO_NTOHL(_d, _s) do { _d = ntohl(*(unsigned*)(_s)); } while(0)
+#define DO_HTONS(_d, _s) do { *(unsigned short*)(_d) = htons(_s); } while(0)
+#define DO_HTONL(_d, _s) do { *(unsigned*)(_d) = htonl(_s); } while(0)
+#else
+#define DO_NTOHS(_d, _s) \
+    do { unsigned short _dd; \
+         memcpy(&(_dd), (_s), sizeof(unsigned short)); \
+         _d = ntohs(_dd); } while(0)
+#define DO_NTOHL(_d, _s) \
+    do { unsigned _dd; \
+         memcpy(&(_dd), (_s), sizeof(unsigned)); \
+         _d = ntohl(_dd); } while(0)
+#define DO_HTONS(_d, _s) \
+    do { unsigned short _dd; \
+         _dd = htons(_s); \
+         memcpy((_d), &(_dd), sizeof(unsigned short)); } while(0);
+#define DO_HTONL(_d, _s) \
+    do { unsigned _dd; \
+         _dd = htonl(_s); \
+         memcpy((_d), &(_dd), sizeof(unsigned)); } while(0);
+#endif
+
 void debugf(int level, const char *format, ...);
 int prefetch(void *begin, size_t length);
 int incore(void *begin, size_t length);
