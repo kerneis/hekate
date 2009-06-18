@@ -409,8 +409,7 @@ send_chunk(int fd, struct chunk *chunk)
             cpc_yield;
 
             if(numpeers < maxpeers) {
-                /* I'd really want this to be a while, but CPC is buggy. */
-                if(numunchoked >= maxunchoked)
+                while(numunchoked >= maxunchoked)
                     cpc_wait(choke_cond);
 
                 rc = unchoke_peer(fd);
@@ -763,8 +762,7 @@ client(hashtable *t, int client_fd)
 
     cpc_spawn stream_writer(client_fd);
 
-    /* I'd really want this to be a while, but CPC is buggy. */
-    if(numunchoked >= maxunchoked)
+    while(numunchoked >= maxunchoked)
         cpc_wait(choke_cond);
 
     rc = unchoke_peer(client_fd);
