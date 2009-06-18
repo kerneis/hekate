@@ -232,7 +232,7 @@ main(int argc, char **argv)
         "  -4: IPv4 only\n"
         "  -6: IPv6 only\n"
         "  -p: listening port\n"
-        "  -N: maximum number of unchocked peers\n"
+        "  -N: maximum number of unchoked peers\n"
         "  -C: initial peer credit (between 32k and 1G)\n"
         "  -d: debug verbosity\n");
     exit(1);
