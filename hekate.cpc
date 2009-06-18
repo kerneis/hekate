@@ -133,7 +133,7 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "t46p:d:");
+        opt = getopt(argc, argv, "t46p:N:C:d:");
         if(opt == -1)
             break;
         switch(opt) {
@@ -149,6 +149,17 @@ main(int argc, char **argv)
         case 'p':
             peer_port = atoi(optarg);
             if(peer_port <= 0 || peer_port > 0x10000)
+                goto usage;
+            break;
+        case 'N':
+            maxunchoked = atoi(optarg);
+            if(maxunchoked <= 0 || maxunchoked > 10000)
+                goto usage;
+            break;
+        case 'C':
+            initial_credit = atoi(optarg);
+            if(initial_credit <= 32 * 1024 ||
+               initial_credit > 1024 * 1024 * 1024)
                 goto usage;
             break;
         case 'd':
