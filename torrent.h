@@ -52,6 +52,7 @@ struct torrent {
     uint64_t uploaded;
 };
 
+struct torrent *parse_torrent(char *curr_path, benc *raw);
 struct torrent * ht_load(char *curr_path, benc *raw);
 
 #endif
