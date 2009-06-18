@@ -74,7 +74,7 @@ send_message_2(int fd, int id,
     debugf(4, "%3d -> type = %d, length = %d\n",
            fd, id, bodylen1 + bodylen2 + 1);
 
-    *(uint32_t*)buf = htonl(bodylen1 + bodylen2 + 1);
+    DO_HTONL(buf, bodylen1 + bodylen2 + 1);
     buf[4] = id;
 
     i = 0;
@@ -119,7 +119,7 @@ send_message_h(int fd, char *head, int headlen,
     debugf(4, "%3d -> h=%d, type = %d, length = %d\n",
            fd, headlen, id, bodylen + 1);
 
-    *(uint32_t*)buf = htonl(bodylen + 1);
+    DO_HTONL(buf, bodylen + 1);
     buf[4] = id;
 
     i = 0;
@@ -315,8 +315,8 @@ send_multi_chunk(int fd, struct chunk *chunk,
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
-    *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
-    *((uint32_t *)(buf + 4)) = htonl(chunk->begin);
+    DO_HTONL(buf + 0, chunk->offset);
+    DO_HTONL(buf + 4, chunk->begin);
 
     /* pos may be smaller than chunk->length, if the chunk extended beyond
        the end of the torrent. */
@@ -449,8 +449,8 @@ send_chunk(int fd, struct chunk *chunk)
            fd, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
-    *((uint32_t *)(buf + 0)) = htonl(chunk->offset);
-    *((uint32_t *)(buf + 4)) = htonl(chunk->begin);
+    DO_HTONL(buf + 0, chunk->offset);
+    DO_HTONL(buf + 4, chunk->begin);
 
     if(!incore(source, chunk->length)) {
         /* Since we prefetch when we first get a request, this chunk should
@@ -617,7 +617,7 @@ stream_reader(int fd)
             start = 0;
         }
 
-        length = ntohl(*(uint32_t *)(buff + start));
+        DO_NTOHL(length, buff + start);
         assert(length >= 0);
 
         start += 4;
@@ -671,9 +671,9 @@ stream_reader(int fd)
                 fprintf(stderr, "Message too short.\n");
                 goto fail;
             }
-            index = ntohl(*((uint32_t *)(&(buff[start])+1)));
-            begin = ntohl(*((uint32_t *)(&(buff[start])+5)));
-            chunk_len = ntohl(*((uint32_t *)(&(buff[start])+9)));
+            DO_NTOHL(index, buff + start + 1);
+            DO_NTOHL(begin, buff + start + 5);
+            DO_NTOHL(chunk_len, buff + start + 9);
             if(chunk_len == 0){
                 fprintf(stderr, "Request length is zero.\n");
                 goto fail;
