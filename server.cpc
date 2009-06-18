@@ -386,41 +386,7 @@ send_chunk(int fd, struct chunk *chunk)
     unsigned offset;
     struct file *f;
 
-    if(chunk->length > initial_credit) {
-        debugf(1, "Chunk larger than max credit!\n");
-        return -1;
-    }
-
-    if(peers[fd].credit < chunk->length) {
-        if(numpeers <= maxunchoked) {
-            /* replenish straight away, but yield to give other peers
-               a chance in case we're sender-limited. */
-            debugf(2, "%3d replenish\n", fd);
-            peers[fd].credit = initial_credit;
-            cpc_yield;
-        } else {
-            /* Choke even if we're going to shut this connection now,
-               since we're not doing lingering close yet. */
-            rc = choke_peer(fd);
-            if(rc < 0)
-                return -1;
-
-            /* Give other peers a chance to become unchoked. */
-            cpc_yield;
-
-            if(numpeers < maxpeers) {
-                while(numunchoked >= maxunchoked)
-                    cpc_wait(choke_cond);
-
-                rc = unchoke_peer(fd);
-                if(rc < 0)
-                    return -1;
-            } else {
-                debugf(2, "%3d dropping\n", fd);
-                return -1;
-            }
-        }
-    }
+    assert(peers[fd].unchoked && peers[fd].credit >= chunk->length);
 
     rc = find_chunk(t, chunk->offset * t->p_length + chunk->begin,
                     chunk->length, &first, &last, &offset, NULL);
@@ -561,13 +527,14 @@ handshake(hashtable *ht , int fd)
 cps void
 stream_writer(int fd)
 {
-    //while request list non empty, send chunks
     struct chunk *chunk;
     int rc;
 
     while(1) {
+    again:
         if(peers[fd].dying)
             goto done;
+
         while(!peers[fd].list) {
             cpc_wait(peers[fd].sw_cond);
             if(peers[fd].dying)
@@ -575,6 +542,43 @@ stream_writer(int fd)
         }
 
         chunk = peers[fd].list;
+
+        if(chunk->length > initial_credit) {
+            debugf(1, "Chunk larger than max credit!\n");
+            goto done;
+        }
+
+        if(chunk->length > peers[fd].credit) {
+            if(numpeers <= maxunchoked) {
+                /* replenish straight away */
+                debugf(2, "%3d replenish\n", fd);
+                peers[fd].credit = initial_credit;
+            } else {
+                /* Choke even if we're going to shut this connection now,
+                   since we're not doing lingering close yet. */
+                rc = choke_peer(fd);
+                if(rc < 0)
+                    goto done;
+
+                /* Give other peers a chance to become unchoked. */
+                cpc_yield;
+
+                if(numpeers < maxpeers) {
+                    while(numunchoked >= maxunchoked)
+                        cpc_wait(choke_cond);
+
+                    rc = unchoke_peer(fd);
+                    if(rc < 0)
+                        goto done;
+                    /* choking has cleared the peer's requested chunk list,
+                       chunk is no longer valid. */
+                    goto again;
+                } else {
+                    debugf(2, "%3d dropping\n", fd);
+                    goto done;
+                }
+            }
+        }
 
         peers[fd].list = peers[fd].list->next;
         rc = send_chunk(fd, chunk);
