@@ -889,7 +889,6 @@ listening(hashtable * table)
 
     fail:
         close(client_fd);
-        cpc_condvar_release(choke_cond);
         continue;
     }
 
