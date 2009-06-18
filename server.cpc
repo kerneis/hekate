@@ -54,10 +54,9 @@ cpc_condvar *choke_cond;
 
 int numpeers = 0;
 int numunchoked = 0;
-#define MAX_CONNECTED_PEERS 512
-#define MAX_UNCHOKED_PEERS (MAX_CONNECTED_PEERS / 10)
-
-#define MAX_PEER_CREDIT (1024 * 1024)
+int maxpeers;
+int maxunchoked = 50;
+int initial_credit = 1024 * 1024;
 
 struct peer peers[FD_MAX];
 
@@ -329,7 +328,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
 
     t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
-    assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
+    assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
 
     free(body);
     return 0;
@@ -353,7 +352,7 @@ unchoke_peer(int fd)
         return -1;
     numunchoked++;
     peers[fd].unchoked = 1;
-    peers[fd].credit = MAX_PEER_CREDIT;
+    peers[fd].credit = initial_credit;
     return 1;
 }
 
@@ -387,17 +386,17 @@ send_chunk(int fd, struct chunk *chunk)
     unsigned offset;
     struct file *f;
 
-    if(chunk->length > MAX_PEER_CREDIT) {
+    if(chunk->length > initial_credit) {
         debugf(1, "Chunk larger than max credit!\n");
         return -1;
     }
 
     if(peers[fd].credit < chunk->length) {
-        if(numpeers <= MAX_UNCHOKED_PEERS) {
+        if(numpeers <= maxunchoked) {
             /* replenish straight away. */
             debugf(2, "%3d replenish\n", fd);
-            peers[fd].credit = MAX_PEER_CREDIT;
-        } else if(numpeers < MAX_CONNECTED_PEERS) {
+            peers[fd].credit = initial_credit;
+        } else if(numpeers < maxpeers) {
             /* Our queue is not full yet, choke this client. */
             rc = choke_peer(fd);
             if(rc < 0)
@@ -405,7 +404,7 @@ send_chunk(int fd, struct chunk *chunk)
             cpc_yield;
 
             /* I'd really want this to be a while, but CPC is buggy. */
-            if(numunchoked >= MAX_UNCHOKED_PEERS)
+            if(numunchoked >= maxunchoked)
                 cpc_wait(choke_cond);
 
             rc = unchoke_peer(fd);
@@ -474,7 +473,7 @@ send_chunk(int fd, struct chunk *chunk)
  done:
     t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
-    assert(peers[fd].credit >= 0 && peers[fd].credit < MAX_PEER_CREDIT);
+    assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
 
     return 0;
 }
@@ -759,7 +758,7 @@ client(hashtable *t, int client_fd)
     cpc_spawn stream_writer(client_fd);
 
     /* I'd really want this to be a while, but CPC is buggy. */
-    if(numunchoked >= MAX_UNCHOKED_PEERS)
+    if(numunchoked >= maxunchoked)
         cpc_wait(choke_cond);
 
     rc = unchoke_peer(client_fd);
@@ -806,6 +805,7 @@ listening(hashtable * table)
     struct sockaddr_in6 serv_addr, cli_addr;
 
     memset(&peers, 0, sizeof(&peers));
+    maxpeers = MIN(maxunchoked * 10, FD_MAX - 10);
 
     socket_fd = socket(AF_INET6, SOCK_STREAM, 0);
     if(socket_fd<0) {
@@ -862,8 +862,8 @@ listening(hashtable * table)
         if(client_fd > FD_MAX)
             goto fail;
 
-        assert(numpeers >= 0 && numpeers <= MAX_CONNECTED_PEERS);
-        if(numpeers >= MAX_CONNECTED_PEERS) {
+        assert(numpeers >= 0 && numpeers <= maxpeers);
+        if(numpeers >= maxpeers) {
             fprintf(stderr, "Dropping peer connection.\n");
             goto fail;
         }

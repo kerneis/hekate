@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include <cpc/cpc_lib.h>
 
 extern int peer_port;
+extern int maxpeers, maxunchoked;
+extern int initial_credit;
 
 typedef struct peer {
     cpc_condvar *sw_cond;
