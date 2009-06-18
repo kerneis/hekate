@@ -473,8 +473,8 @@ handshake(hashtable *ht , int fd)
 
     debugf(2, "%3d Torrent requested: ", fd);
     for(int i = 0;i<20;i++)
-        debugf(1, "%.2x", (unsigned char)*(t + 28 + i));
-    debugf(1, "\n");
+        debugf(2, "%.2x", (unsigned char)*(t + 28 + i));
+    debugf(2, "\n");
 
     peers[fd].t = torrent;
     peers[fd].credit = MAX_PEER_CREDIT;
