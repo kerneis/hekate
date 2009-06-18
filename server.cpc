@@ -53,7 +53,9 @@ int peer_port = 6969;
 cpc_condvar *choke_cond;
 
 int numpeers = 0;
+int numunchoked = 0;
 #define MAX_CONNECTED_PEERS 512
+#define MAX_UNCHOKED_PEERS (MAX_CONNECTED_PEERS / 10)
 
 #define MAX_PEER_CREDIT (1024 * 1024)
 
@@ -338,6 +340,43 @@ send_multi_chunk(int fd, struct chunk *chunk,
 }
 
 cps int
+unchoke_peer(int fd)
+{
+    int rc;
+
+    assert(numunchoked <= numpeers);
+    assert(!peers[fd].unchoked);
+
+    debugf(2, "%3d unchoke\n", fd);
+    rc = send_unchoke(fd);
+    if(rc < 0)
+        return -1;
+    numunchoked++;
+    peers[fd].unchoked = 1;
+    peers[fd].credit = MAX_PEER_CREDIT;
+    return 1;
+}
+
+cps int
+choke_peer(int fd)
+{
+    int rc;
+
+    assert(numunchoked >= 1 && numunchoked <= numpeers);
+    assert(peers[fd].unchoked);
+
+    debugf(2, "%3d choke\n", fd);
+    rc = send_choke(fd);
+    if(rc < 0)
+        return -1;
+    free_chunks(fd);
+    numunchoked--;
+    peers[fd].unchoked = 0;
+    cpc_signal(choke_cond);
+    return 1;
+}
+
+cps int
 send_chunk(int fd, struct chunk *chunk)
 {
     int file, i, rc;
@@ -354,23 +393,24 @@ send_chunk(int fd, struct chunk *chunk)
     }
 
     if(peers[fd].credit < chunk->length) {
-        if(numpeers <= 1 + MAX_CONNECTED_PEERS / 10) {
-            /* We've got very few peers, replenish. */
+        if(numpeers <= MAX_UNCHOKED_PEERS) {
+            /* replenish straight away. */
             debugf(2, "%3d replenish\n", fd);
             peers[fd].credit = MAX_PEER_CREDIT;
         } else if(numpeers < MAX_CONNECTED_PEERS) {
-            /* Our queue is not full yet, choke this client for a small time. */
-            debugf(2, "%3d temporary choke\n", fd);
-            rc = send_choke(fd);
+            /* Our queue is not full yet, choke this client. */
+            rc = choke_peer(fd);
             if(rc < 0)
                 return -1;
-            free_chunks(fd);
-            cpc_signal(choke_cond);
-            cpc_wait(choke_cond);
-            rc = send_unchoke(fd);
+            cpc_yield;
+
+            /* I'd really want this to be a while, but CPC is buggy. */
+            if(numunchoked >= MAX_UNCHOKED_PEERS)
+                cpc_wait(choke_cond);
+
+            rc = unchoke_peer(fd);
             if(rc < 0)
                 return -1;
-            peers[fd].credit = MAX_PEER_CREDIT;
         } else {
             /* Drop this client connection, so that others get a chance. */
             debugf(2, "%3d dropping\n", fd);
@@ -477,7 +517,7 @@ handshake(hashtable *ht , int fd)
     debugf(2, "\n");
 
     peers[fd].t = torrent;
-    peers[fd].credit = MAX_PEER_CREDIT;
+    peers[fd].credit = 0;
 
     //so all is ok and we can say that all is ok yupiiiii!!!!
     //now lets generate the ACK response
@@ -521,8 +561,13 @@ stream_writer(int fd)
     int rc;
 
     while(1) {
-        while(!peers[fd].list)
+        if(peers[fd].dying)
+            goto done;
+        while(!peers[fd].list) {
             cpc_wait(peers[fd].sw_cond);
+            if(peers[fd].dying)
+                goto done;
+        }
 
         chunk = peers[fd].list;
 
@@ -535,6 +580,7 @@ stream_writer(int fd)
     }
 
  done:
+    peers[fd].dying = 1;
     shutdown(fd, 2);
     cpc_barrier_await(peers[fd].barrier);
 }
@@ -698,40 +744,54 @@ client(hashtable *t, int client_fd)
     int rc = 0;
     unsigned char buffer[BUF_LENGTH];
 
+    assert(peers[client_fd].t == NULL);
+
+    numpeers++;
     peers[client_fd].sw_cond = cpc_condvar_get();
     peers[client_fd].barrier = cpc_barrier_get(2);
-
-    cpc_spawn stream_writer(client_fd);
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
         debugf(1, "(client)broken handshake -- dropping.\n");
-        goto done;
+        goto done_nobarrier;
     }
 
-    if(numpeers > MAX_CONNECTED_PEERS / 10)
+    cpc_spawn stream_writer(client_fd);
+
+    /* I'd really want this to be a while, but CPC is buggy. */
+    if(numunchoked >= MAX_UNCHOKED_PEERS)
         cpc_wait(choke_cond);
 
-    rc = send_unchoke(client_fd);
+    rc = unchoke_peer(client_fd);
     if(rc < 0) {
         fprintf(stderr, "couldn't send unchoke\n");
-        return;
+        goto done;
     }
 
     rc = stream_reader(client_fd);
 
  done:
+    peers[client_fd].dying = 1;
     shutdown(client_fd, 2);
     cpc_signal(peers[client_fd].sw_cond);
     cpc_barrier_await(peers[client_fd].barrier);
 
+ done_nobarrier:
+    debugf(1, "Closing %d.\n", client_fd);
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
 
     cpc_condvar_release(peers[client_fd].sw_cond);
 
+    if(peers[client_fd].unchoked) {
+        numunchoked--;
+        cpc_signal(choke_cond);
+    }
+
+    assert(numpeers >= 1);
     numpeers--;
-    cpc_signal(choke_cond);
+
+    memset(&peers[client_fd], 0, sizeof(struct peer));
 
     close(client_fd);
     return;
@@ -744,6 +804,8 @@ listening(hashtable * table)
     int rc, flags, one = 1, zero = 0;
     socklen_t cli_len;
     struct sockaddr_in6 serv_addr, cli_addr;
+
+    memset(&peers, 0, sizeof(&peers));
 
     socket_fd = socket(AF_INET6, SOCK_STREAM, 0);
     if(socket_fd<0) {
@@ -793,7 +855,7 @@ listening(hashtable * table)
             cpc_sleep(1);
             continue;
         }
-        debugf(2, "Accepted connection %d!\n", client_fd);
+        debugf(2, "Accepted connection %d.\n", client_fd);
         assert(!peers[client_fd].t);
 
         /* XXX */
@@ -817,7 +879,6 @@ listening(hashtable * table)
             goto fail;
         }
 
-        numpeers++;
         cpc_spawn client(table, client_fd);
         continue;
 
