@@ -396,24 +396,28 @@ send_chunk(int fd, struct chunk *chunk)
             /* replenish straight away. */
             debugf(2, "%3d replenish\n", fd);
             peers[fd].credit = initial_credit;
-        } else if(numpeers < maxpeers) {
-            /* Our queue is not full yet, choke this client. */
+        } else {
+            /* Choke even if we're going to shut this connection now,
+               since we're not doing lingering close yet. */
             rc = choke_peer(fd);
             if(rc < 0)
                 return -1;
+
+            /* Give other peers a chance to become unchoked. */
             cpc_yield;
 
-            /* I'd really want this to be a while, but CPC is buggy. */
-            if(numunchoked >= maxunchoked)
-                cpc_wait(choke_cond);
+            if(numpeers < maxpeers) {
+                /* I'd really want this to be a while, but CPC is buggy. */
+                if(numunchoked >= maxunchoked)
+                    cpc_wait(choke_cond);
 
-            rc = unchoke_peer(fd);
-            if(rc < 0)
+                rc = unchoke_peer(fd);
+                if(rc < 0)
+                    return -1;
+            } else {
+                debugf(2, "%3d dropping\n", fd);
                 return -1;
-        } else {
-            /* Drop this client connection, so that others get a chance. */
-            debugf(2, "%3d dropping\n", fd);
-            return -1;
+            }
         }
     }
 
