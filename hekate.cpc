@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <dirent.h>
 #include <pthread.h>
@@ -51,7 +53,7 @@ void
 upload(hashtable *table, char *path)
 {
     DIR *dir;
-    int pos, length;
+    int pos, rc;
     unsigned char tmp[20];
     char *curr_path;
     buffer *buf;
@@ -70,14 +72,12 @@ upload(hashtable *table, char *path)
     }
 
     while((entry = readdir(dir))) {
-        length = strlen(path) + strlen(entry->d_name) + 2;
-        curr_path = malloc(length);
-        if(!curr_path){
-            perror("(upload)sprintf");
-            return;
+        rc = asprintf(&curr_path, "%s/%s", path, entry->d_name);
+        if(rc < 0){
+            perror("(upload)asprintf");
+            goto fail;
         }
 
-        snprintf(curr_path, length, "%s/%s", path, entry->d_name);
         if(strcmp(entry->d_name,".") == 0 ||
            strcmp(entry->d_name,"..") == 0) {
             free(curr_path);
@@ -125,6 +125,8 @@ upload(hashtable *table, char *path)
 
         free(curr_path);
     }
+
+    fail:
     closedir(dir);
     return;
 }
