@@ -31,6 +31,7 @@ typedef struct hashtable{
 
 
 hashtable * ht_create(int size);
+void ht_free(hashtable *ht);
 void ht_insert(hashtable *ht, struct torrent *hte);
 struct torrent * ht_get(hashtable *ht, unsigned char *key);
 #endif

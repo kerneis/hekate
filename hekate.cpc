@@ -221,6 +221,8 @@ main(int argc, char **argv)
 
     curl_global_cleanup();
 
+    ht_free(table);
+
     return 0;
 
     usage:
