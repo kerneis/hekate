@@ -47,7 +47,10 @@ ht_create(int size)
 
     ht->size = size;
     ht->table = calloc(size, sizeof(struct torrent *));
-    if(!ht->table) return NULL;
+    if(!ht->table) {
+        free(ht);
+        return NULL;
+    }
 
     return ht;
 }
