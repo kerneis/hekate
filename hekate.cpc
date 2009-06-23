@@ -79,12 +79,15 @@ upload(hashtable *table, char *path)
 
         snprintf(curr_path, length, "%s/%s", path, entry->d_name);
         if(strcmp(entry->d_name,".") == 0 ||
-           strcmp(entry->d_name,"..") == 0)
+           strcmp(entry->d_name,"..") == 0) {
+            free(curr_path);
             continue;
+        }
 
         if(lstat(curr_path, &st)) {
             fprintf(stderr, "%s ", curr_path);
             perror("(upload)lstat");
+            free(curr_path);
             continue;
         }
         /* it's a normal file */
@@ -95,6 +98,7 @@ upload(hashtable *table, char *path)
                 buf = open_buffer(curr_path);
                 if(!buf) {
                     fprintf(stderr, "(upload)open_buffer %s\n", curr_path);
+                    free(curr_path);
                     continue;
                 }
 
@@ -102,7 +106,10 @@ upload(hashtable *table, char *path)
                 memcpy(tmp, result->hash, 20);
 
                 elmt = parse_torrent(path, result);
-                if(!elmt) continue;
+                if(!elmt) {
+                    free(curr_path);
+                    continue;
+                }
 
                 ht_insert(table, elmt);
 
