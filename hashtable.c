@@ -55,6 +55,28 @@ ht_create(int size)
     return ht;
 }
 
+void
+ht_free(hashtable *ht)
+{
+    int i;
+    struct torrent *hte, *htf;
+
+    if(!ht) return;
+
+    for(i = 0; i < ht->size; i++) {
+        hte = ht->table[i];
+        while(hte) {
+            htf = hte;
+            hte = hte->next;
+            free_torrent(htf);
+        }
+    }
+
+    free(ht->table);
+    free(ht);
+
+    return;
+}
 
 void
 ht_insert(hashtable *ht, struct torrent *hte)
