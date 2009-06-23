@@ -269,7 +269,6 @@ parsing(buffer *b)
 void
 free_benc(benc *node)
 {
-    return;
     int i;
     switch(node->type) {
         case INT:
