@@ -96,6 +96,7 @@ free_torrent(struct torrent *t)
         }
     }
 
+    free(t->files);
     free(t);
 }
 
