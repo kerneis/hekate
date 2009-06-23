@@ -338,7 +338,7 @@ parse_torrent(char *curr_path, benc *raw)
     return NULL;
 
  torrent_error:
-    fprintf(stderr, "Bad .torrent file.in %s\n",curr_path);
+    fprintf(stderr, "Bad .torrent file in %s\n", curr_path);
     free_benc(raw);
     free_torrent(elmt);
     return NULL;
