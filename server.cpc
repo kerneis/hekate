@@ -452,7 +452,7 @@ send_chunk(int fd, struct chunk *chunk)
 cps int
 handshake(hashtable *ht , int fd)
 {
-    int rc, numread;
+    int rc, numread, i;
     const char *protocol = "\023BitTorrent protocol";
     char *res = NULL, *tmp = NULL, t[68];
     struct torrent *torrent = NULL;
@@ -475,14 +475,14 @@ handshake(hashtable *ht , int fd)
     torrent = ht_get(ht, t + 28);
     if(!torrent) {
         fprintf(stderr, "(handshake): cannot find hash ");
-        for(int i = 0;i<20;i++)
+        for(int i = 0; i<20; i++)
             fprintf(stderr, "%.2x", (unsigned char)*(t + 28 + i));
         fprintf(stderr, "\n");
         return -1;
     }
 
-    debugf(2, "%3d Torrent requested: ", fd);
-    for(int i = 0;i<20;i++)
+    debugf(2, "%3d torrent requested: ", fd);
+    for(i = 0; i<20; i++)
         debugf(2, "%.2x", (unsigned char)*(t + 28 + i));
     debugf(2, "\n");
 
@@ -520,6 +520,13 @@ handshake(hashtable *ht , int fd)
         if(rc < 68 - numread)
             return -1;
     }
+
+    debugf(2, "%3d peer-id ", fd);
+    for(i = 0; i < 20; i++) {
+        unsigned char c = t[48 + i];
+        debugf(2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
+    }
+    debugf(2, "\n");
 
     return 0;
 }
@@ -785,7 +792,7 @@ client(hashtable *t, int client_fd)
     cpc_barrier_await(peers[client_fd].barrier);
 
  done_nobarrier:
-    debugf(1, "Closing %d.\n", client_fd);
+    debugf(1, "%3d closing.\n", client_fd);
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
 
@@ -864,16 +871,18 @@ listening(hashtable * table)
             cpc_sleep(1);
             continue;
         }
-        debugf(2, "Accepted connection %d.\n", client_fd);
+        debugf(2, "%3d accepted.\n", client_fd);
         assert(!peers[client_fd].t);
 
         /* XXX */
-        if(client_fd > FD_MAX)
+        if(client_fd > FD_MAX) {
+            fprintf(stderr, "%3d beyond FD_MAX -- dropping\n", client_fd);
             goto fail;
+        }
 
         assert(numpeers >= 0 && numpeers <= maxpeers);
         if(numpeers >= maxpeers) {
-            fprintf(stderr, "Dropping peer connection.\n");
+            debugf(1, "%3d dropping early.\n", client_fd);
             goto fail;
         }
 
