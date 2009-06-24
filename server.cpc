@@ -657,7 +657,7 @@ stream_reader(int fd)
         start += 4;
 
         if(length == 0) {
-            //keepalive message
+            /* keep-alive */
             continue;
         }
 
@@ -675,8 +675,8 @@ stream_reader(int fd)
 
             end = cpc_partial_read(fd, buff + buf_len,
                                    length - buf_len, BUF_LENGTH - buf_len);
-            /* XXX Do not remove the first comparison, since len is
-             * implicitely cast to an UNSIGNED int in the second one. */
+            /* Do not remove the first comparison, since len is
+             * implicitly cast to an UNSIGNED int in the second one. */
             if(end < 0 || end < length)
                 goto fail;
             assert(end > 0);
@@ -720,7 +720,7 @@ stream_reader(int fd)
                 goto fail;
             }
 
-            if((int)buff[start] == 6) {
+            if(buff[start] == 6) {
                 int rc, i, first, last;
                 unsigned offset, last_len;
                 rc = find_chunk(peers[fd].t,
@@ -748,7 +748,7 @@ stream_reader(int fd)
             break;
 
         default:
-            fprintf(stderr , "%3d unexpected message.\n", fd);
+            fprintf(stderr, "%3d unexpected message.\n", fd);
             goto fail;
         }
         start += length;
@@ -904,6 +904,7 @@ listening(hashtable * table)
             perror("F_GETFL");
             goto fail;
         }
+
         rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
         if(rc < 0) {
             perror("F_SETFL");
