@@ -236,17 +236,9 @@ main(int argc, char **argv)
 
     usage:
     fprintf(stderr,
-        "Usage: %s "
-        "[ -t ] [ -4 | -6 ] [ -p peer_port ] [ -N max_unchoked ]\n"
-        "                "
-        "[-C initial_credit ] [ -d debug_level ] dir...\n"
-        "  -t: no tracker\n"
-        "  -4: IPv4 only\n"
-        "  -6: IPv6 only\n"
-        "  -p: listening port\n"
-        "  -N: maximum number of unchoked peers\n"
-        "  -C: initial peer credit (between 32k and 1G)\n"
-        "  -d: debug verbosity\n",
-        argv[0]);
+        "Usage: hekate "
+        "[ -t ] [ -4 | -6 ] [ -p port ] [ -N max_unchoked ] [-C credit]\n"
+        "              [-d debug]\n"
+        "              directory...\n");
     exit(1);
 }
