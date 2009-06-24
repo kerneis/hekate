@@ -171,7 +171,7 @@ main(int argc, char **argv)
             break;
         case 'C':
             initial_credit = atoi(optarg);
-            if(initial_credit <= 32 * 1024 ||
+            if(initial_credit < 16 * 1024 ||
                initial_credit > 1024 * 1024 * 1024)
                 goto usage;
             break;
