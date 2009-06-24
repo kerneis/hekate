@@ -897,6 +897,12 @@ listening(hashtable * table)
             goto fail;
         }
 
+        rc = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
+        if(rc) {
+            perror("setsockopt");
+            goto fail;
+        }
+
         cpc_spawn client(table, client_fd);
         continue;
 
