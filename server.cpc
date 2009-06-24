@@ -580,7 +580,7 @@ stream_writer(int fd)
                     rc = choke_peer(fd);
                     if(rc < 0)
                         goto done;
-                    
+
                     if(numpeers >= maxpeers) {
                         debugf(2, "%3d dropping\n", fd);
                         goto done;
@@ -779,29 +779,19 @@ client(hashtable *t, int client_fd)
     rc = handshake(t, client_fd);
     if(rc < 0) {
         debugf(1, "(client)broken handshake -- dropping.\n");
-        goto done_nobarrier;
+        goto done;
     }
 
     cpc_spawn stream_writer(client_fd);
 
-    while(numunchoked >= maxunchoked)
-        cpc_wait(choke_cond);
-
-    rc = unchoke_peer(client_fd);
-    if(rc < 0) {
-        fprintf(stderr, "couldn't send unchoke\n");
-        goto done;
-    }
-
     rc = stream_reader(client_fd);
 
- done:
     peers[client_fd].dying = 1;
     shutdown(client_fd, 2);
     cpc_signal(peers[client_fd].sw_cond);
     cpc_barrier_await(peers[client_fd].barrier);
 
- done_nobarrier:
+ done:
     debugf(1, "%3d closing.\n", client_fd);
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
