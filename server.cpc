@@ -538,61 +538,68 @@ stream_writer(int fd)
     int rc;
 
     while(1) {
-    again:
-        if(peers[fd].dying)
-            goto done;
+        assert(!peers[fd].unchoked);
 
-        while(!peers[fd].list) {
-            cpc_wait(peers[fd].sw_cond);
-            if(peers[fd].dying)
-                goto done;
-        }
+        while(numunchoked >= maxunchoked)
+            cpc_wait(choke_cond);
 
-        chunk = peers[fd].list;
-
-        if(chunk->length > initial_credit) {
-            debugf(1, "Chunk larger than max credit!\n");
-            goto done;
-        }
-
-        if(chunk->length > peers[fd].credit) {
-            if(numpeers <= maxunchoked) {
-                /* replenish straight away */
-                debugf(2, "%3d replenish\n", fd);
-                peers[fd].credit = initial_credit;
-            } else {
-                /* Choke even if we're going to shut this connection now,
-                   since we're not doing lingering close yet. */
-                rc = choke_peer(fd);
-                if(rc < 0)
-                    goto done;
-
-                /* Give other peers a chance to become unchoked. */
-                cpc_yield;
-
-                if(numpeers < maxpeers) {
-                    while(numunchoked >= maxunchoked)
-                        cpc_wait(choke_cond);
-
-                    rc = unchoke_peer(fd);
-                    if(rc < 0)
-                        goto done;
-                    /* choking has cleared the peer's requested chunk list,
-                       chunk is no longer valid. */
-                    goto again;
-                } else {
-                    debugf(2, "%3d dropping\n", fd);
-                    goto done;
-                }
-            }
-        }
-
-        peers[fd].list = peers[fd].list->next;
-        rc = send_chunk(fd, chunk);
+        rc = unchoke_peer(fd);
         if(rc < 0)
             goto done;
-        free(chunk);
-        cpc_yield;
+
+        while(1) {
+            assert(peers[fd].unchoked);
+
+            if(peers[fd].dying)
+                goto done;
+
+            if(!peers[fd].list)
+                cpc_sleep(30, 0, peers[fd].sw_cond);
+
+            if(!peers[fd].list)
+                /* Look, mate, you had your chance. */
+                goto done;
+
+            if(peers[fd].dying)
+                goto done;
+
+            chunk = peers[fd].list;
+
+            if(chunk->length > initial_credit) {
+                debugf(1, "Chunk larger than max credit!\n");
+                goto done;
+            }
+
+            if(chunk->length > peers[fd].credit) {
+                if(numpeers <= maxunchoked) {
+                    debugf(2, "%3d replenish\n", fd);
+                    peers[fd].credit = initial_credit;
+                } else {
+                    /* Choke even if we're going to drop,
+                       since we're not doing lingering close yet. */
+                    rc = choke_peer(fd);
+                    if(rc < 0)
+                        goto done;
+                    
+                    if(numpeers >= maxpeers) {
+                        debugf(2, "%3d dropping\n", fd);
+                        goto done;
+                    }
+
+                    /* Give other peers a chance to become unchoked. */
+                    cpc_yield;
+
+                    break;
+                }
+            }
+
+            peers[fd].list = peers[fd].list->next;
+            rc = send_chunk(fd, chunk);
+            if(rc < 0)
+                goto done;
+            free(chunk);
+            cpc_yield;
+        }
     }
 
  done:
@@ -614,6 +621,9 @@ stream_reader(int fd)
         return -1;
 
     while(1) {
+        if(peers[fd].dying)
+            goto fail;
+
         buf_len = end - start;
         assert(buf_len >= 0);
         if(buf_len < 4) {
