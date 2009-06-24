@@ -1,67 +1,49 @@
 .TH HEKATE 1 "June 2009"
 .SH NAME
-hekate \- efficient BitTorrent seeder
+hekate \- a BitTorrent seeder
 .SH SYNOPSIS
 .B hekate
 .IR option "... " directory ...
 .SH DESCRIPTION
-Hekate is an efficient BitTorrent seeder, designed to distribute
-.I fairly
-several hundreds of torrents to several thousands of peers.
-
+Hekate is a BitTorrent seeder, able to seed
+thousands of torrents to thousands of peers.
 .SH OPTIONS
 .TP
 .BI \-t
-Do not contact the trackers.
+Do not contact any trackers.
 .TP
 .BI \-4
-Forces
-.B hekate
-to use IPv4 adresses only.
+Contact trackers over IPv4 only.
 .TP
 .BI \-6
-Forces
-.B hekate
-to use IPv6 adresses only.
+Contact trackers over IPv6 only.
 .TP
 .BI \-p " port"
-Specify the TCP port number to be used by
-.B hekate
-\.
+Specify the listening TCP port.
 .TP
 .BI \-N " max_unchoked"
-The maximum number of simultaneously unchoked peers. The default is
+Specify the maximum number of simultaneously unchoked peers.  The default is
 50.
 .TP
 .BI \-C " credit"
-The initial credit of a peer, in bytes. The value should be between
-32kB (inclusive) and 1GB (exclusive). The default is 1048576 (1MB).
+Specify the
+.I initial credit
+given to a peer, in bytes.  This is the amount that will be served to
+a peer before it is considered for choking or dropping.  The default is
+1048576 (1MB).
 .TP
 .BI \-d " level"
-The debug level. The default is 0. A value of 4 will display every
-send and received BitTorrent message.
+Specify the debug level.  The default is 0.  A value of 4 will display
+every BitTorrent message sent or received.
 .TP
 .IR directory ...
 The list of directories in which
 .B hekate
 should (recursively) look for torrents.
-.SH FAIRNESS ALGORITHM
-There is a pool of peers, split in two parts: unchoked (or active)
-and choked (or waiting) peers. The size of the global pool is ten
-times the size of the unchoked one (and cropped to 1014 in the
-current version, but this is subject to change).
-
-When a peer is accepted, it is given an initial credit. Each time a
-piece is sent to a peer, its credit is decreased by the size of the
-piece. When a peer runs out of credit, it is either replenished with
-its initial credit (if the unchoked pool is not full), put in the
-choke pool (giving a chance to other peers to enter the unchoked
-pool) or dropped (if the unchoked pool is full too).
-.SH BUGS
 Plenty.  This is experimental software, run at your own risk.
 .SH SEE ALSO
 .BR transmission (1),
 .BR deluge (1),
 .BR rtorrent (1).
-.SH AUTHOR
+.SH AUTHORS
 Pejman Attar, Yoann Canal, Juliusz Chroboczek and Gabriel Kerneis.
