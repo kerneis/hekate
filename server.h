@@ -29,6 +29,7 @@ THE SOFTWARE.
 extern int peer_port;
 extern int maxpeers, maxunchoked;
 extern int initial_credit;
+extern int max_unchoked_time;
 
 typedef struct peer {
     cpc_condvar *sw_cond;
@@ -37,6 +38,7 @@ typedef struct peer {
     int dying;
     int unchoked;
     int credit;
+    time_t unchoke_time;
     struct chunk *list;
 } peer;
 

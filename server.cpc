@@ -57,6 +57,7 @@ int numunchoked = 0;
 int maxpeers;
 int maxunchoked = 50;
 int initial_credit = 1024 * 1024;
+int max_unchoked_time = 5 * 60;
 
 struct peer peers[FD_MAX];
 
@@ -353,6 +354,7 @@ unchoke_peer(int fd)
     numunchoked++;
     peers[fd].unchoked = 1;
     peers[fd].credit = initial_credit;
+    peers[fd].unchoke_time = time(NULL);
     return 1;
 }
 
@@ -578,7 +580,9 @@ stream_writer(int fd)
                 goto done;
             }
 
-            if(chunk->length > peers[fd].credit) {
+            if(chunk->length > peers[fd].credit ||
+               (max_unchoked_time > 0 &&
+                peers[fd].unchoke_time + max_unchoked_time < time(NULL))) {
                 if(numpeers <= maxunchoked) {
                     debugf(2, "%3d replenish\n", fd);
                     peers[fd].credit = initial_credit;
