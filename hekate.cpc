@@ -142,7 +142,7 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "t46p:N:C:d:");
+        opt = getopt(argc, argv, "t46p:N:C:T:d:");
         if(opt == -1)
             break;
         switch(opt) {
@@ -175,6 +175,10 @@ main(int argc, char **argv)
                initial_credit > 1024 * 1024 * 1024)
                 goto usage;
             break;
+        case 'T':
+            max_unchoked_time = atoi(optarg);
+            if(max_unchoked_time < 0)
+                goto usage;
         case 'd':
             debug_level = atoi(optarg);
             break;
