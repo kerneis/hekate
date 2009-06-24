@@ -613,6 +613,11 @@ stream_writer(int fd)
  done:
     peers[fd].dying = 1;
     shutdown(fd, 2);
+
+    /* If we failed to unchoke the peer above, then a slot is still vacant. */
+    if(numunchoked < maxunchoked)
+        cpc_signal(choke_cond);
+
     cpc_barrier_await(peers[fd].barrier);
 }
 
