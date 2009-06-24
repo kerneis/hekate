@@ -540,8 +540,16 @@ stream_writer(int fd)
     while(1) {
         assert(!peers[fd].unchoked);
 
-        while(numunchoked >= maxunchoked)
+        while(numunchoked >= maxunchoked) {
+            if(peers[fd].dying)
+                goto done;
             cpc_wait(choke_cond);
+        }
+
+        /* If the peer is a seed, it should have dropped the connection by
+           now, in which case the reader will have noticed. */
+        if(peers[fd].dying)
+            goto done;
 
         rc = unchoke_peer(fd);
         if(rc < 0)
