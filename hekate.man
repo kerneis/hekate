@@ -40,6 +40,7 @@ every BitTorrent message sent or received.
 The list of directories in which
 .B hekate
 should (recursively) look for torrents.
+.SH BUGS
 Plenty.  This is experimental software, run at your own risk.
 .SH SEE ALSO
 .BR transmission (1),
