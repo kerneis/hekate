@@ -696,15 +696,21 @@ stream_reader(int fd)
         }
 
         switch(buff[start]) {
-        case 0: case 1: case 2: case 4: case 5:
+        case 0: case 1: case 4: case 5:
             break;
 
-        case 3:                     //not interested
+        case 2:
+            debugf(3, "%3d interested\n", fd);
+            peers[fd].interested = 1;
+            break;
+
+        case 3:
             debugf(3, "%3d not interested\n", fd);
+            peers[fd].interested = 0;
             goto fail;
 
-        case 6:                     //request
-        case 8:                     //cancel
+        case 6:
+        case 8:
             if(length < 13) {
                 fprintf(stderr, "Message too short.\n");
                 goto fail;
