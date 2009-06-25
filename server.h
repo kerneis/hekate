@@ -32,7 +32,7 @@ extern int initial_credit;
 extern int max_unchoked_time;
 
 typedef struct peer {
-    cpc_condvar *sw_cond;
+    cpc_condvar *writer_cond;
     cpc_barrier *barrier;
     struct torrent *t;
     int dying;
