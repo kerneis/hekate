@@ -564,7 +564,7 @@ stream_writer(int fd)
                 goto done;
 
             if(!peers[fd].list)
-                cpc_wait(peers[fd].sw_cond, 30);
+                cpc_wait(peers[fd].writer_cond, 30);
 
             if(!peers[fd].list)
                 /* Look, mate, you had your chance. */
@@ -750,7 +750,7 @@ stream_reader(int fd)
                                  i == last ?
                                  last_len : peers[fd].t->files[i]->length);
                 }
-                cpc_signal(peers[fd].sw_cond);
+                cpc_signal(peers[fd].writer_cond);
             } else {
                 peers[fd].list = remove_chunk(peers[fd].list,
                                               index, begin, chunk_len);
@@ -800,7 +800,7 @@ client(hashtable *t, int client_fd)
     assert(peers[client_fd].t == NULL);
 
     numpeers++;
-    peers[client_fd].sw_cond = cpc_condvar_get();
+    peers[client_fd].writer_cond = cpc_condvar_get();
     peers[client_fd].barrier = cpc_barrier_get(2);
 
     rc = handshake(t, client_fd);
@@ -815,7 +815,7 @@ client(hashtable *t, int client_fd)
 
     peers[client_fd].dying = 1;
     shutdown(client_fd, 2);
-    cpc_signal(peers[client_fd].sw_cond);
+    cpc_signal(peers[client_fd].writer_cond);
     cpc_barrier_await(peers[client_fd].barrier);
 
  done:
@@ -823,7 +823,7 @@ client(hashtable *t, int client_fd)
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
 
-    cpc_condvar_release(peers[client_fd].sw_cond);
+    cpc_condvar_release(peers[client_fd].writer_cond);
 
     if(peers[client_fd].unchoked) {
         numunchoked--;
