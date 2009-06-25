@@ -553,6 +553,17 @@ stream_writer(int fd)
         if(peers[fd].dying)
             goto done;
 
+        if(numpeers >= maxpeers - 1) {
+            /* If our queue is full-ish, then this peer should have expressed
+               interest before it reached this point.  If it's empty-ish,
+               then we might as well unchoke it even though it's not interested,
+               just for kicks. */
+            if(!peers[fd].interested) {
+                debugf(2, "%3d dropping uninterested\n", fd);
+                goto done;
+            }
+        }
+
         rc = unchoke_peer(fd);
         if(rc < 0)
             goto done;
