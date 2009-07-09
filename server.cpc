@@ -562,7 +562,7 @@ stream_writer(int fd)
                 goto done;
 
             if(!peers[fd].list)
-                cpc_sleep(30, 0, peers[fd].sw_cond);
+                cpc_wait(peers[fd].sw_cond, 30);
 
             if(!peers[fd].list)
                 /* Look, mate, you had your chance. */
