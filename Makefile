@@ -24,4 +24,4 @@ clean:
 	  -o $@ $<
 
 .cpi.c:
-	$(CPC) $< --out $@
+	$(CPC) $(CPCOPTS) $< --out $@
