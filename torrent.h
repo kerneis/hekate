@@ -45,6 +45,9 @@ struct torrent {
     int num_files;
     struct file **files;
 
+    /* Private flag, BEP 27. */
+    int private;
+
     char *tracker_url;
 
     int update_interval;

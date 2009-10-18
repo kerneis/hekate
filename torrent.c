@@ -224,6 +224,9 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
         } else if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
                   (raw->set.l[i+1])->type == STRING) {
             elmt->num_chunks = raw->set.l[i+1]->size/20;
+        } else if(strcmp((raw->set.l[i])->s, "private") == 0 &&
+                  (raw->set.l[i+1])->type == INT) {
+            elmt->private = !!(raw->set.l[i+1])->i;
         }
     }
     return 0;
