@@ -42,6 +42,7 @@ THE SOFTWARE.
 #include "parse.h"
 #include "server.h"
 #include "sha1.h"
+#include "torrent.h"
 #include "tracker.h"
 
 
