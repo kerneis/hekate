@@ -694,7 +694,7 @@ stream_reader(int fd)
 
             end = cpc_partial_read(fd, buff + buf_len,
                                    4 - buf_len, BUF_LENGTH - buf_len);
-            if(end < 4)
+            if(end < 4 - buf_len)
                 goto fail;
             end += buf_len;
             start = 0;
@@ -726,7 +726,7 @@ stream_reader(int fd)
                                    length - buf_len, BUF_LENGTH - buf_len);
             /* Do not remove the first comparison, since len is
              * implicitly cast to an UNSIGNED int in the second one. */
-            if(end < 0 || end < length)
+            if(end < 0 || end < length - buf_len)
                 goto fail;
             assert(end > 0);
             end += buf_len;
