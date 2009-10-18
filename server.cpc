@@ -183,7 +183,6 @@ send_bitfield(int fd, struct torrent *t, char *head, int headlen)
 cps int
 send_choke(int fd)
 {
-    unsigned char buf[5];
     int rc;
 
     rc = send_message(fd, 0, NULL, 0);
@@ -197,7 +196,6 @@ send_choke(int fd)
 cps int
 send_unchoke(int fd)
 {
-    unsigned char buf[5];
     int rc;
 
     rc = send_message(fd, 1, NULL, 0);
