@@ -12,6 +12,9 @@ thousands of torrents to thousands of peers.
 .BI \-t
 Do not contact any trackers.
 .TP
+.BI \-h
+Do not participate in the DHT.
+.TP
 .BI \-4
 Contact trackers over IPv4 only.
 .TP
