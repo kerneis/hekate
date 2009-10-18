@@ -103,7 +103,7 @@ free_torrent(struct torrent *t)
 int
 parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 {
-    int i, j, k, c, rc;
+    int i, j, k, rc;
     int64_t offset;
     benc *dico;
     struct file **tmp_files;
@@ -124,32 +124,18 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
         f->offset = offset;
         f->map = NULL;
 
-        c = 0;
-        for(j=0; j<dico->size; j+=2) {
+        for(j = 0; j < dico->size; j += 2) {
             if((dico->set.l[j])->type != STRING) {
                 return -2;
             }
 
-            switch(c) {
-            case 0:
-                if(strcmp((dico->set.l[j])->s, "length") == 0 &&
-                   (dico->set.l[j+1])->type == INT) {
-                    f->length = dico->set.l[j+1]->i;
-                    c = 1;
-                }
-                break;
-
-            case 1:
-                if(strcmp((dico->set.l[j])->s, "path") == 0 &&
-                   (dico->set.l[j+1])->type == LIST) {
-                    rc = concat_path(f, curr_path, dico->set.l[j+1]);
-                    if(rc<0) return rc;
-                    c = 2;
-                }
-                break;
-
-            default:
-                j = dico->size;
+            if(strcmp((dico->set.l[j])->s, "length") == 0 &&
+               (dico->set.l[j+1])->type == INT) {
+                f->length = dico->set.l[j+1]->i;
+            } else if(strcmp((dico->set.l[j])->s, "path") == 0 &&
+                      (dico->set.l[j+1])->type == LIST) {
+                rc = concat_path(f, curr_path, dico->set.l[j+1]);
+                if(rc<0) return rc;
             }
         }
 
@@ -177,107 +163,76 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 int
 parse_info(struct torrent *elmt, char *curr_path, benc *raw)
 {
-    int i, c, rc, path_length;
+    int i, rc, path_length;
     char *path = NULL;
     benc *multi_files = NULL;
 
-    c = 0; /* Use the fact that dictionnary are sorted */
-    for(i=0; i<raw->size; i+=2) {
-        if((raw->set.l[i])->type != STRING) {
-            return -2;
-        }
-
-        switch(c){
-        case 0:
-            /* single file case */
-            if(strcmp((raw->set.l[i])->s, "length") == 0 &&
-               (raw->set.l[i+1])->type == INT) {
-                elmt->files = malloc(sizeof(struct file *));
-                if(!elmt->files){
-                    perror("(parse_info)malloc files");
-                    return -1;
-                }
-                elmt->files[0] = calloc(1, sizeof(struct file));
-                if(!elmt->files[0]){
-                    perror("(parse_info)calloc file");
-                    return -1;
-                }
-
-                elmt->num_files = 1;
-                elmt->files[0]->length = raw->set.l[i+1]->i;
-                c = 1;
+    for(i = 0; i < raw->size; i += 2) {
+        if((raw->set.l[i])->type != STRING)
+            continue;
+            
+        if(strcmp((raw->set.l[i])->s, "length") == 0 &&
+           (raw->set.l[i+1])->type == INT) {
+            elmt->files = malloc(sizeof(struct file *));
+            if(!elmt->files) {
+                perror("(parse_info)malloc files");
+                return -1;
             }
-            /* multi files case */
-            if(strcmp((raw->set.l[i])->s, "files") == 0 &&
-               (raw->set.l[i+1])->type == LIST) {
-                elmt->num_files = raw->set.l[i+1]->size;
-                elmt->files = calloc(elmt->num_files, sizeof(struct file *));
-                if(!elmt->files){
-                    perror("(parse_info)calloc files");
-                    return -1;
-                }
-                /* we need to know p_length */
-                multi_files = raw->set.l[i+1];
-                c = 1;
+            elmt->files[0] = calloc(1, sizeof(struct file));
+            if(!elmt->files[0]){
+                perror("(parse_info)calloc file");
+                return -1;
             }
-            break;
-
-        case 1:
-            if(strcmp((raw->set.l[i])->s, "name") == 0 &&
-               (raw->set.l[i+1])->type == STRING) {
-                path_length = raw->set.l[i+1]->size + strlen(curr_path) + 2;
-                path = malloc(path_length);
-                if(!path) {
-                    perror("(parse_info)malloc");
-                    return -1;
-                }
-                snprintf(path, path_length, "%s/%s",
-                         curr_path, (raw->set.l[i+1])->s);
-
-                /* in single file case: name of the only file */
-                if(!multi_files) {
-                    elmt->files[0]->path = path;
-                }
-                /* in multi files case: path will be the recommended path */
-                c = 2;
+            
+            elmt->num_files = 1;
+            elmt->files[0]->length = raw->set.l[i+1]->i;
+        } else if(strcmp((raw->set.l[i])->s, "files") == 0 &&
+                  (raw->set.l[i+1])->type == LIST) {
+            elmt->num_files = raw->set.l[i+1]->size;
+            elmt->files = calloc(elmt->num_files, sizeof(struct file *));
+            if(!elmt->files){
+                perror("(parse_info)calloc files");
+                return -1;
             }
-            break;
-
-        case 2:
-            if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
-               (raw->set.l[i+1])->type == INT) {
-                elmt->p_length = (raw->set.l[i+1])->i;
-
-                /* now we can compute chunks offsets */
-                if(multi_files) {
-                    rc = parse_files(elmt, path, multi_files);
-                    free(path);
-                    if(rc<0) return rc;
-                }
-                c = 3;
+            /* we need to know p_length */
+            multi_files = raw->set.l[i+1];
+        } else if(strcmp((raw->set.l[i])->s, "name") == 0 &&
+                  (raw->set.l[i+1])->type == STRING) {
+            path_length = raw->set.l[i+1]->size + strlen(curr_path) + 2;
+            path = malloc(path_length);
+            if(!path) {
+                perror("(parse_info)malloc");
+                return -1;
             }
-            break;
-
-        case 3:
-            if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
-               (raw->set.l[i+1])->type == STRING) {
-                elmt->num_chunks = raw->set.l[i+1]->size/20;
-                c = 4;
+            snprintf(path, path_length, "%s/%s",
+                     curr_path, (raw->set.l[i+1])->s);
+            
+            /* in single file case: name of the only file */
+            if(!multi_files) {
+                elmt->files[0]->path = path;
             }
-            break;
-
-        default:
-            i = raw->size; /* leave loop */
+        } else if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
+                  (raw->set.l[i+1])->type == INT) {
+            elmt->p_length = (raw->set.l[i+1])->i;
+            
+            /* now we can compute chunks offsets */
+            if(multi_files) {
+                rc = parse_files(elmt, path, multi_files);
+                free(path);
+                if(rc<0) return rc;
+            }
+        } else if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
+                  (raw->set.l[i+1])->type == STRING) {
+            elmt->num_chunks = raw->set.l[i+1]->size/20;
         }
     }
-    if(c<4) return -2;
     return 0;
 }
 
 struct torrent *
 parse_torrent(char *curr_path, benc *raw)
 {
-    int i, c, rc;
+    int i, rc;
     struct torrent *elmt;
 
     elmt = calloc(1, sizeof(struct torrent));
@@ -289,45 +244,27 @@ parse_torrent(char *curr_path, benc *raw)
     if(raw->type != DICT)
         goto torrent_error;
 
-    c = 0; /* Use the fact that dictionnary are sorted */
-    for(i=0; i<raw->size; i+=2) {
+    for(i=0; i < raw->size; i += 2) {
         if((raw->set.l[i])->type != STRING)
-            goto torrent_error;
+            continue;
 
-        switch(c) {
-        case 0:
-            if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
-               (raw->set.l[i+1])->type == STRING) {
-                elmt->tracker_url = (raw->set.l[i+1])->s;
-                raw->set.l[i+1]->s = NULL;
-                c = 1;
-            }
-            break;
-
-        case 1:
-            if(strcmp((raw->set.l[i])->s, "info") == 0 &&
-               (raw->set.l[i+1])->type == DICT ) {
-                rc = parse_info(elmt, curr_path, raw->set.l[i+1]);
-                if(rc < -1)
-                    goto torrent_error;
-                else if(rc < 0)
-                    goto internal_error;
-                c = 2;
-            }
-            break;
-
-        default:
-            i = raw->size; /* leave loop */
+        if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
+           (raw->set.l[i+1])->type == STRING) {
+            elmt->tracker_url = (raw->set.l[i+1])->s;
+            raw->set.l[i+1]->s = NULL;
+        } else if(strcmp((raw->set.l[i])->s, "info") == 0 &&
+                  (raw->set.l[i+1])->type == DICT ) {
+            rc = parse_info(elmt, curr_path, raw->set.l[i+1]);
+            if(rc < -1)
+                goto torrent_error;
+            else if(rc < 0)
+                goto internal_error;
         }
     }
 
     /* copy info hash */
     elmt->info_hash = raw->hash;
     raw->hash = NULL;
-
-    /* was the .torrent complete? */
-    if(c<2 || !elmt->info_hash)
-        goto torrent_error;
 
     free_benc(raw);
     return elmt;
