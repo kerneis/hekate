@@ -28,7 +28,13 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <arpa/inet.h>
+
+#include "dht/dht.h"
+#include "sha1.h"
 
 #include "list.h"
 #include "torrent.h"
@@ -36,7 +42,7 @@ THE SOFTWARE.
 #include "tracker.h"
 
 char peer_id[21];
-int notracker = 0;
+int notracker = 0, nodht = 0;
 int noipv4 = 0;
 int noipv6 = 0;
 
@@ -181,24 +187,193 @@ connection(tr_list *t, int ipv6, char *event)
     connection(t, ipv6, event);
 }
 
+static int dht_socket = -1;
+
+cps void
+dht_announcer(int dht_socket)
+{
+    while(1) {
+        int rc;
+        tr_list *current;
+
+        /* Wait for the DHT to be ready. */
+        while(1) {
+            rc = dht_nodes(NULL, NULL, NULL, NULL);
+            if(rc >= 16)
+                break;
+            cpc_sleep(30 + random() % 30, random() % 1000000);
+        }
+
+        current = trackers;
+        while(current) {
+            struct torrent *tor = current->head;
+            while(tor) {
+                if(!tor->private)
+                    dht_search(dht_socket, tor->info_hash, peer_port,
+                               NULL, NULL);
+                tor = tor->next;
+            }
+            cpc_sleep(0, random() % 1000000);
+            current = current->next;
+        }
+
+        cpc_sleep(25 * 60 + random() % (3 * 60), random() % 1000000);
+    }
+}
+        
+
+        
+
+cps void
+dht_loop(int dht_socket)
+{
+    cpc_condvar *dht_cond;
+    static time_t tosleep = 0;  /* static because of CPC bug */
+    static int sleeping = 0;    /* idem */
+
+    dht_cond = cpc_condvar_get();
+
+    while(1) {
+        int rc;
+
+        cpc_spawn {
+            sleeping++;
+            cpc_sleep(tosleep, random() % 1000000, dht_cond);
+            cpc_signal(dht_cond);
+            sleeping--;
+        }
+
+        /* rc =*/ cpc_io_wait(dht_socket, CPC_IO_IN, dht_cond);
+        rc = 1;                 /* for now */
+
+        rc = dht_periodic(dht_socket, !!rc, &tosleep, NULL, NULL);
+
+        while(sleeping) {
+            cpc_signal(dht_cond);
+            cpc_yield;
+        }
+
+        if(rc < 0) {
+            if(errno == EINTR) {
+                continue;
+            } else {
+                perror("dht_periodic");
+                if(rc == EINVAL || rc == EFAULT)
+                    abort();
+                tosleep = 1;
+            }
+        }
+    }
+}
+
 void
 init_trackers()
 {
     tr_list *current;
+    int rc;
 
-    if(notracker)
-        return;
+    if(!notracker) {
+        if(trackers == NULL)
+            fprintf(stderr, "Warning: no trackers!\n");
 
-    if(trackers == NULL)
-        fprintf(stderr, "Warning: no trackers!\n");
+        current = trackers;
 
-    current = trackers;
-
-    while(current) {
-        if(!noipv4)
-            cpc_spawn connection(current, 0, "started");
-        if(!noipv6)
-            cpc_spawn connection(current, 1, "started");
-        current = current -> next;
+        while(current) {
+            if(!noipv4)
+                cpc_spawn connection(current, 0, "started");
+            if(!noipv6)
+                cpc_spawn connection(current, 1, "started");
+            current = current -> next;
+        }
     }
+
+    if(!nodht) {
+        static unsigned char dht_id[20];
+        struct sockaddr_in sin;
+        unsigned char v[4] = 'HK00';
+
+        rc = dht_random_bytes(dht_id, 20);
+        if(rc < 20) {
+            perror("random(dht_id)");
+            goto dht_done;
+        }
+
+        dht_socket = socket(PF_INET, SOCK_DGRAM, 0);
+        if(dht_socket < 0) {
+            perror("socket(dht)");
+            goto dht_done;
+        }
+
+        memset(&sin, 0, sizeof(sin));
+        sin.sin_family = AF_INET;
+        sin.sin_port = htons(peer_port);
+
+        rc = bind(dht_socket, (struct sockaddr*)&sin, sizeof(sin));
+        if(rc < 0) {
+            perror("bind(dht_socket)");
+            goto dht_fail;
+        }
+
+        if(getenv( "HK_DHT_VERBOSE") != NULL )
+            dht_debug = stderr;
+
+        rc = dht_init(dht_socket, dht_id, v);
+        if(rc < 0)
+            goto dht_fail;
+
+        cpc_spawn dht_loop(dht_socket);
+        cpc_spawn dht_announcer(dht_socket);
+        goto dht_done;
+
+    dht_fail:
+        close(dht_socket);
+    dht_done:
+        ;
+    }
+}
+
+/* DHT callbacks */
+
+/* Stupid, stupid, stupid. */
+static void
+SHA1_more(struct sha1_ctx *ctx, unsigned char *buf, int len)
+{
+    int i;
+    for(i = 0; i < len; i++)
+        SHA1_feed(ctx, buf[i]);
+}
+
+void
+dht_hash(void *hash_return, int hash_size,
+         const void *v1, int len1,
+         const void *v2, int len2,
+         const void *v3, int len3)
+{
+    static struct sha1_ctx ctx;
+    unsigned char sha1[20];
+    SHA1_start(&ctx);
+    SHA1_more(&ctx, v1, len1);
+    SHA1_more(&ctx, v2, len2);
+    SHA1_more(&ctx, v3, len3);
+    SHA1_stop(&ctx, sha1);
+    if(hash_size > 20)
+        memset((char*)hash_return + 20, 0, hash_size - 20);
+    memcpy(hash_return, sha1, hash_size > 20 ? 20 : hash_size);
+}
+
+static int devrandom = -1;
+
+int
+dht_random_bytes(void *buf, size_t size)
+{
+    int fd, rc, save;
+
+    if(devrandom < 0) {
+        devrandom = open("/dev/urandom", O_RDONLY);
+        if(devrandom < 0)
+            return -1;
+    }
+
+    rc = read(devrandom, buf, size);
+    return rc;
 }

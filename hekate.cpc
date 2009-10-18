@@ -37,6 +37,8 @@ THE SOFTWARE.
 
 #include <curl/curl.h>
 
+#include "sha1.h"
+
 #include "util.h"
 #include "hashtable.h"
 #include "parse.h"
@@ -143,12 +145,15 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "t46p:N:C:T:d:");
+        opt = getopt(argc, argv, "th46p:N:C:T:d:");
         if(opt == -1)
             break;
         switch(opt) {
         case 't':
             notracker = 1;
+            break;
+        case 'h':
+            nodht = 1;
             break;
         case '4':
             if(noipv4 == 1)
@@ -242,7 +247,7 @@ main(int argc, char **argv)
     usage:
     fprintf(stderr,
         "Usage: hekate "
-        "[ -t ] [ -4 | -6 ] [ -p port ] [ -N max_unchoked ] [-C credit]\n"
+        "[ -t ] [ -h ] [ -4 | -6 ] [ -p port ] [ -N max_unchoked ] [-C credit]\n"
         "              [-d debug]\n"
         "              directory...\n");
     exit(1);

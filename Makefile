@@ -10,11 +10,15 @@ LDLIBS=-lcurl -lm -pthread -lcpcfull
 
 .PHONY: all clean
 
-hekate: sha1.o util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o hekate.o
+hekate: sha1.o util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o hekate.o dht/dht.o
 
 all: hekate
 
+dht/dht.o: dht/dht.c
+	cd dht && $(MAKE) dht.o
+
 clean:
+	cd dht && $(MAKE) clean
 	rm -f *.o *~ *.cpi
 	for x in *.cpc; do rm -f $${x%.cpc}.c; done;
 	rm -f hekate
