@@ -206,6 +206,22 @@ send_unchoke(int fd)
     return 0;
 }
 
+cps int
+send_dht_port(int fd, unsigned short port)
+{
+    int rc;
+    unsigned char buf[2];
+
+    DO_HTONS(buf, port);
+
+    rc = send_message(fd, 9, buf, 2);
+    if(rc < 0) {
+        perror("(send_unchoke)cpc_full_write");
+        return -1;
+    }
+    return 0;
+}
+
 void *
 map_file(struct torrent *t, int index)
 {
@@ -501,6 +517,8 @@ handshake(hashtable *ht , int fd)
     tmp += 19;
 
     memset(tmp, 0, 8);
+    if(!nodht)
+        tmp[7] |= 1;
     tmp += 8;
 
     memcpy(tmp, torrent->info_hash, 20);
@@ -521,12 +539,14 @@ handshake(hashtable *ht , int fd)
             return -1;
     }
 
+    peers[fd].dht = !!(t[1 + 19 + 7] & 1);
+
     debugf(2, "%3d peer-id ", fd);
     for(i = 0; i < 20; i++) {
         unsigned char c = t[48 + i];
         debugf(2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
     }
-    debugf(2, "\n");
+    debugf(2, "%s\n", peers[fd].dht ? " (DHT)" : "");
 
     return 0;
 }
@@ -536,6 +556,22 @@ stream_writer(int fd)
 {
     struct chunk *chunk;
     int rc;
+
+    if(!nodht && peers[fd].dht) {
+        struct sockaddr_in6 sin6;
+        socklen_t salen = sizeof(sin6);
+        rc = getpeername(fd, (struct sockaddr*)&sin6, &salen);
+        if(rc < 0) {
+            perror("getpeername");
+        } else {
+            if(sin6.sin6_family == AF_INET6 &&
+               IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)) {
+                rc = send_dht_port(fd, peer_port);
+                if(rc < 0)
+                    goto done;
+            }
+        }
+    }
 
     while(1) {
         assert(!peers[fd].unchoked);
@@ -573,7 +609,7 @@ stream_writer(int fd)
                 goto done;
 
             if(!peers[fd].list)
-                cpc_wait(peers[fd].writer_cond, 30);
+                cpc_sleep(30, 0, peers[fd].writer_cond);
 
             if(!peers[fd].list)
                 /* Look, mate, you had your chance. */
@@ -705,7 +741,7 @@ stream_reader(int fd)
         }
 
         switch(buff[start]) {
-        case 0: case 1: case 4: case 5:
+        case 0: case 1: case 4: case 5: case 9:
             break;
 
         case 2:
