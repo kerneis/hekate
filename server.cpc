@@ -947,13 +947,14 @@ client(hashtable *t, int client_fd)
 
     numpeers++;
     peers[client_fd].writer_cond = cpc_condvar_get();
-    peers[client_fd].barrier = cpc_barrier_get(2);
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
         debugf(1, "(client)broken handshake -- dropping.\n");
         goto done;
     }
+
+    peers[client_fd].barrier = cpc_barrier_get(2);
 
     cpc_spawn stream_writer(client_fd);
 
