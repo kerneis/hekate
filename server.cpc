@@ -827,7 +827,8 @@ stream_reader(int fd)
 }
 
 void
-free_chunk_list(struct chunk* c) {
+free_chunk_list(struct chunk* c)
+{
     struct chunk *next;
     while(c) {
         next = c->next;
@@ -835,7 +836,6 @@ free_chunk_list(struct chunk* c) {
         c = next;
     }
 }
-
 
 void
 free_chunks(int fd)
