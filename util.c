@@ -174,32 +174,39 @@ global_unicast_address(struct sockaddr *sa)
 }
 
 int
-find_global_address(int af, char *address, int address_len)
+find_global_address(int af, void *addr, int *addr_len)
 {
     struct sockaddr_storage ss;
     socklen_t ss_len = sizeof(ss);
     int rc;
-    const char *ret;
 
     /* This should be a name with both IPv4 and IPv6 addresses. */
-    rc = get_name_source_address(af, "www.ietf.org",
-                                 (struct sockaddr*)&ss, &ss_len);
+    rc = get_name_source_address( af, "www.transmissionbt.com",
+                                  (struct sockaddr*)&ss, &ss_len );
+    /* In case Charles removes IPv6 from his website. */
+    if( rc < 0 )
+        rc = get_name_source_address(  af, "www.ietf.org",
+                                      (struct sockaddr*)&ss, &ss_len );
 
     if( rc < 0 )
         return -1;
 
-    if(!global_unicast_address((struct sockaddr*)&ss))
+    if( !global_unicast_address( (struct sockaddr*)&ss) )
         return -1;
 
     switch(af) {
     case AF_INET:
-        ret = inet_ntop(af, &((struct sockaddr_in*)&ss)->sin_addr,
-                        address, address_len);
-        return ret ? 1 : -1;
+        if(*addr_len < 4)
+            return -1;
+        memcpy(addr, &((struct sockaddr_in*)&ss)->sin_addr, 4);
+        *addr_len = 4;
+        return 1;
     case AF_INET6:
-        ret = inet_ntop(af, &((struct sockaddr_in6*)&ss)->sin6_addr,
-                       address, address_len);
-        return ret ? 1 : -1;
+        if(*addr_len < 16)
+            return -1;
+        memcpy(addr, &((struct sockaddr_in6*)&ss)->sin6_addr, 16);
+        *addr_len = 16;
+        return 1;
     default:
         return -1;
     }
