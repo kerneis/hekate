@@ -206,10 +206,10 @@ dht_announcer(int dht_socket)
 
         current = trackers;
         while(current) {
-            struct torrent *tor = current->head;
+            to_list *tor = current->head;
             while(tor) {
-                if(!tor->private)
-                    dht_search(dht_socket, tor->info_hash, peer_port,
+                if(!tor->elmt->private)
+                    dht_search(dht_socket, tor->elmt->info_hash, peer_port,
                                NULL, NULL);
                 tor = tor->next;
             }
