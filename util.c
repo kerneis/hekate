@@ -72,7 +72,7 @@ incore(void *begin, size_t length)
     if(lr > 32 * pagesize)
         return -1;
 
-    rc = mincore((void*)br, lr, vec);
+    rc = mincore((void*)br, l, vec);
     if(rc < 0)
         return -1;
 
