@@ -843,6 +843,24 @@ stream_reader(int fd)
                 fprintf(stderr, "Message too short.\n");
                 goto fail;
             }
+
+            /* There's a race condition in the protocol: if a request and
+               a choke cross each other, then the two peers will have
+               unsynchronised request lists.  Ignoring any requests when
+               the peer is choked mitigates the race somewhat, although it
+               can still happen if we send choke/unchoke in short
+               succession.  The peers will resynchronise at the next
+               choke.
+
+               The FAST extension solves the issue, but it's somewhat
+               overkill. */
+            if(!peers[fd].unchoked) {
+                debugf(2, "%3d %s in choked state.\n",
+                       fd, type == 6 ? "request" : "cancel");
+                assert(peers[fd].list == NULL);
+                break;
+            }
+
             DO_NTOHL(index, buf + start + 4 + 1);
             DO_NTOHL(begin, buf + start + 4 + 5);
             DO_NTOHL(chunk_len, buf + start + 4 + 9);
