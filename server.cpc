@@ -46,7 +46,7 @@ THE SOFTWARE.
 
 int peer_port = 6969;
 
-#define BUF_LENGTH 512
+#define BUF_LENGTH 2048
 #define DIR_LEN 512
 #define FD_MAX 1024
 
