@@ -674,73 +674,82 @@ cps int
 stream_reader(int fd)
 {
     uint32_t length = 0;
-    unsigned char *buff = NULL;
+    unsigned char *buf = NULL;
     uint32_t begin, index, chunk_len;
-    int start = 0, end = 0, buf_len = 0;
+    int start = 0, end = 0, size = 0, rc, type;
 
-    buff = malloc(BUF_LENGTH);
-    if(!buff)
+    buf = malloc(BUF_LENGTH);
+    if(!buf)
         return -1;
 
     while(1) {
         if(peers[fd].dying)
             goto fail;
 
-        buf_len = end - start;
-        assert(buf_len >= 0);
-        if(buf_len < 4) {
-            if(start != end)
-                memmove(buff, buff + start, buf_len);
+        size = end - start;
+        assert(size >= 0);
 
-            end = cpc_partial_read(fd, buff + buf_len,
-                                   4 - buf_len, BUF_LENGTH - buf_len);
-            if(end < 4 - buf_len)
+        if(size < 4) {
+            if(start > 0) {
+                if(end > start)
+                    memmove(buf, buf + start, size);
+                end -= start;
+                start = 0;
+            }
+
+            rc = cpc_partial_read(fd, buf + size,
+                                  4 - size, BUF_LENGTH - size);
+            if(rc < 4 - size)
                 goto fail;
-            end += buf_len;
-            start = 0;
+            end += rc;
+            size = end;
         }
 
-        DO_NTOHL(length, buff + start);
-        assert(length >= 0);
+        assert(size == end - start && size >= 4);
 
-        start += 4;
+        DO_NTOHL(length, buf + start);
 
-        if(length == 0) {
-            /* keep-alive */
-            continue;
-        }
-
-        if(length > 128 * 1024) {
+        if(length + 4 > BUF_LENGTH) {
             fprintf(stderr,
                     "%3d unbelievably long message (%d bytes).\n", fd, length);
             goto fail;
         }
 
-        buf_len = end - start;
-        assert(buf_len >= 0);
-        if(buf_len < length){
-            if(start != end)
-                memmove(buff, buff + start, buf_len);
+        if(size < length + 4) {
+            if(start > 0) {
+                if(end > start)
+                    memmove(buf, buf + start, size);
+                end -= start;
+                start = 0;
+            }
 
-            end = cpc_partial_read(fd, buff + buf_len,
-                                   length - buf_len, BUF_LENGTH - buf_len);
-            /* Do not remove the first comparison, since len is
-             * implicitly cast to an UNSIGNED int in the second one. */
-            if(end < 0 || end < length - buf_len)
+            rc = cpc_partial_read(fd, buf + size,
+                                  length + 4 - size, BUF_LENGTH - size);
+            /* Careful, coercion to unsigned */
+            if(rc < 0 || rc < length + 4 - size)
                 goto fail;
-            assert(end > 0);
-            end += buf_len;
-            start = 0;
+            end += rc;
+            size = end;
         }
 
-        debugf(4, "%3d <- type = %d, length = %d\n", fd, buff[start], length);
+        assert(size == end - start && size >= length + 4);
 
-        if(buff[start] != 5 && length > 20) {
+        if(length == 0) {
+            /* keep-alive */
+            start += 4;
+            continue;
+        }
+
+        type = buf[start + 4];
+
+        debugf(4, "%3d <- type = %d, length = %d\n", fd, type, length);
+
+        if(type != 5 && type != 20 && length > 20) {
             fprintf(stderr, "%3d unbelievably long message!\n", fd);
             goto fail;
         }
 
-        switch(buff[start]) {
+        switch(type) {
         case 0: case 1: case 4: case 5: case 9:
             break;
 
@@ -760,22 +769,22 @@ stream_reader(int fd)
                 fprintf(stderr, "Message too short.\n");
                 goto fail;
             }
-            DO_NTOHL(index, buff + start + 1);
-            DO_NTOHL(begin, buff + start + 5);
-            DO_NTOHL(chunk_len, buff + start + 9);
+            DO_NTOHL(index, buf + start + 4 + 1);
+            DO_NTOHL(begin, buf + start + 4 + 5);
+            DO_NTOHL(chunk_len, buf + start + 4 + 9);
             if(chunk_len == 0){
                 fprintf(stderr, "Request length is zero.\n");
                 goto fail;
             }
             debugf(3, "%3d %s: index = %u\tbegin = %u\tlength = %u\n",
-                   fd, buff[start] == 6 ? "request" : "cancel",
+                   fd, type == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
             if(chunk_len > 1024 * 1024) {
                 fprintf(stderr, "Unbelievably large chunk size requested.\n");
                 goto fail;
             }
 
-            if(buff[start] == 6) {
+            if(type == 6) {
                 int rc, i, first, last;
                 unsigned offset, last_len;
                 rc = find_chunk(peers[fd].t,
@@ -810,10 +819,10 @@ stream_reader(int fd)
             fprintf(stderr, "%3d unexpected message.\n", fd);
             goto fail;
         }
-        start += length;
+        start += 4 + length;
     }
  fail:
-    free(buff);
+    free(buf);
     return -1;
 }
 
