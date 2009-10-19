@@ -530,7 +530,7 @@ send_chunk(int fd, struct chunk *chunk)
 }
 /* return -1 if sth wrong happend in handshake otherwise return 0 */
 cps int
-handshake(hashtable *ht , int fd)
+handshake(hashtable *ht, int fd)
 {
     int rc, numread, i;
     const char *protocol = "\023BitTorrent protocol";
