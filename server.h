@@ -36,6 +36,7 @@ typedef struct peer {
     cpc_barrier *barrier;
     struct torrent *t;
     int dht;
+    int ltep;
     int dying;
     int interested;
     int unchoked;
