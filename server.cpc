@@ -267,11 +267,16 @@ send_ltep_handshake(int fd, unsigned short port)
     int rc;
     unsigned char buf[100];
     const char *hekate = "Hekate 0.0";
+    unsigned char *ipv6 = global_ipv6();
 
-    rc = snprintf(buf, 100, "d1:pi%ue1:v%d:%se",
+    rc = snprintf(buf, 100, "d%s1:pi%ue1:v%d:%se",
+                  ipv6 ? "4:ipv616:................" : "",
                   port, (int)strlen(hekate), hekate);
     if(rc < 0 || rc > 100)
         return -1;
+
+    if(ipv6)
+        memcpy(buf + 10, ipv6, 16);
 
     rc = send_ltep_message(fd, 0, buf, rc);
     if(rc < 0) {
