@@ -231,6 +231,36 @@ send_ltep_message(int fd, int id, char *body, int bodylen)
     return send_message_2(fd, 20, buf, 1, body, bodylen);
 }
 
+/* Return global IPv6, with caching.  Careful, this returns a pointer to
+   a static buffer. */
+static cps unsigned char *
+global_ipv6(void)
+{
+    static unsigned char ipv6[16];
+    static time_t ipv6_time = 0;
+    static int have_ipv6 = 0;
+    time_t now = time(NULL);
+
+    /* Re-check every half hour */
+    if(ipv6_time < now - 1800) {
+        int rc, addrlen;
+        addrlen = 16;
+        cpc_detached {
+            rc = find_global_address(AF_INET6, ipv6, &addrlen);
+        }
+        if(rc >= 0 && addrlen == 16)
+            have_ipv6 = 1;
+        else
+            have_ipv6 = 0;
+        ipv6_time = now;
+    }
+
+    if(have_ipv6)
+        return ipv6;
+    else
+        return NULL;
+}
+
 cps int
 send_ltep_handshake(int fd, unsigned short port)
 {
