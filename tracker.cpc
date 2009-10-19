@@ -36,6 +36,7 @@ THE SOFTWARE.
 #include "dht/dht.h"
 #include "sha1.h"
 
+#include "io.h"
 #include "list.h"
 #include "torrent.h"
 #include "server.h"
@@ -220,38 +221,26 @@ dht_announcer(int dht_socket)
         cpc_sleep(25 * 60 + random() % (3 * 60), random() % 1000000);
     }
 }
-        
-
-        
 
 cps void
 dht_loop(int dht_socket)
 {
-    cpc_condvar *dht_cond;
     static time_t tosleep = 0;  /* static because of CPC bug */
     static int sleeping = 0;    /* idem */
 
-    dht_cond = cpc_condvar_get();
-
     while(1) {
         int rc;
+        cpc_timeout *timeout;
 
-        cpc_spawn {
-            sleeping++;
-            cpc_sleep(tosleep, random() % 1000000, dht_cond);
-            cpc_signal(dht_cond);
-            sleeping--;
-        }
+        timeout = cpc_timeout_get(tosleep, random() % 1000000);
 
-        /* rc =*/ cpc_io_wait(dht_socket, CPC_IO_IN, dht_cond);
-        rc = 1;                 /* for now */
+        /* rc =*/ cpc_io_wait(dht_socket, CPC_IO_IN,
+                              cpc_timeout_condvar(timeout));
+        rc = !cpc_timeout_expired(timeout);
+
+        cpc_timeout_destroy(timeout);
 
         rc = dht_periodic(dht_socket, !!rc, &tosleep, NULL, NULL);
-
-        while(sleeping) {
-            cpc_signal(dht_cond);
-            cpc_yield;
-        }
 
         if(rc < 0) {
             if(errno == EINTR) {
