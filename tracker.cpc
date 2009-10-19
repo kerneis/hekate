@@ -290,7 +290,7 @@ init_trackers()
     if(!nodht) {
         static unsigned char dht_id[20];
         struct sockaddr_in sin;
-        unsigned char v[4] = 'HK00';
+        unsigned char v[4] = "HK\0\0";
 
         rc = dht_random_bytes(dht_id, 20);
         if(rc < 20) {
