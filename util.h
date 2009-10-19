@@ -58,4 +58,5 @@ int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
 int get_name_source_address(int af, const char *name,
                             struct sockaddr *src, socklen_t *src_len);
 int global_unicast_address(struct sockaddr *sa);
-int find_global_address(int af, char *address, int address_len);
+int find_global_address(int af, void *addr, int *addr_len);
+
