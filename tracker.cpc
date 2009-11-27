@@ -191,7 +191,7 @@ connection(tr_list *t, int ipv6, char *event)
 static int dht_socket = -1;
 
 cps void
-dht_announcer(int dht_socket)
+dht_announcer(int type)
 {
     while(1) {
         int rc;
@@ -199,7 +199,7 @@ dht_announcer(int dht_socket)
 
         /* Wait for the DHT to be ready. */
         while(1) {
-            rc = dht_nodes(NULL, NULL, NULL, NULL);
+            rc = dht_nodes(type, NULL, NULL, NULL, NULL);
             if(rc >= 16)
                 break;
             cpc_sleep(30 + random() % 30, random() % 1000000);
@@ -210,7 +210,7 @@ dht_announcer(int dht_socket)
             to_list *tor = current->head;
             while(tor) {
                 if(!tor->elmt->private)
-                    dht_search(dht_socket, tor->elmt->info_hash, peer_port,
+                    dht_search(tor->elmt->info_hash, peer_port, type,
                                NULL, NULL);
                 tor = tor->next;
             }
@@ -240,7 +240,7 @@ dht_loop(int dht_socket)
 
         cpc_timeout_destroy(timeout);
 
-        rc = dht_periodic(dht_socket, !!rc, &tosleep, NULL, NULL);
+        rc = dht_periodic(!!rc, &tosleep, NULL, NULL);
 
         if(rc < 0) {
             if(errno == EINTR) {
@@ -306,12 +306,12 @@ init_trackers()
         if(getenv( "HK_DHT_VERBOSE") != NULL )
             dht_debug = stderr;
 
-        rc = dht_init(dht_socket, dht_id, v);
+        rc = dht_init(dht_socket, -1, dht_id, v);
         if(rc < 0)
             goto dht_fail;
 
         cpc_spawn dht_loop(dht_socket);
-        cpc_spawn dht_announcer(dht_socket);
+        cpc_spawn dht_announcer(sin.sin_family);
         goto dht_done;
 
     dht_fail:
