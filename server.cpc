@@ -501,7 +501,7 @@ send_chunk(int fd, struct chunk *chunk)
     if(!incore(source, chunk->length)) {
         /* Since we prefetch when we first get a request, this chunk should
            arrive into core soon.  Yield in order to give it a chance. */
-        cpc_yield;
+        cpc_yield();
         if(!incore(source, chunk->length)) {
             /* Still not in core.  Use a native thread to avoid blocking. */
             cpc_detached {
@@ -718,7 +718,7 @@ stream_writer(int fd)
                     }
 
                     /* Give other peers a chance to become unchoked. */
-                    cpc_yield;
+                    cpc_yield();
 
                     break;
                 }
@@ -729,7 +729,7 @@ stream_writer(int fd)
             if(rc < 0)
                 goto done;
             free(chunk);
-            cpc_yield;
+            cpc_yield();
         }
     }
 
