@@ -75,7 +75,7 @@ cpc_timeout_get(int secs, int usecs)
         }
     }
 
-    cpc_yield;                  /* Enter the sleep. */
+    cpc_yield();                  /* Enter the sleep. */
     return timeout;
 }
 
