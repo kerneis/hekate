@@ -4,13 +4,13 @@ CLIBS=-lcurl
 CDEBUGFLAGS=-O3 -Wall -g
 CFLAGS=$(CDEBUGFLAGS) $(CLIBS) $(EXTRA_DEFINES)
 
-LDLIBS=-lcurl -lm -pthread -lcpcfull
+LDLIBS=-lcurl -lssl -lm -pthread -lcpcfull
 
 .SUFFIXES: .cpc .cpi
 
 .PHONY: all clean
 
-hekate: sha1.o util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o hekate.o dht/dht.o
+hekate: util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o hekate.o dht/dht.o
 
 all: hekate
 
