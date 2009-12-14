@@ -16,10 +16,10 @@ Do not contact any trackers.
 Do not participate in the DHT.
 .TP
 .BI \-4
-Contact trackers over IPv4 only.
+Only announce torrents over IPv4.
 .TP
 .BI \-6
-Contact trackers over IPv6 only.
+Only announce torrents over IPv6.
 .TP
 .BI \-p " port"
 Specify the listening TCP port.
