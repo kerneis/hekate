@@ -25,7 +25,7 @@ THE SOFTWARE.
 #define PARSE_H
 
 #include <inttypes.h>
-#include "sha1.h"
+#include <openssl/sha.h>
 
 #define BUF_SIZE 512
 #define SET_BASE_SIZE 8
@@ -60,7 +60,7 @@ typedef struct buffer {
   int fd;
   int cur;
   int eof;
-  struct sha1_ctx sha1;
+  SHA_CTX sha1;
   char hashing;
 } buffer;
 

@@ -36,14 +36,12 @@ THE SOFTWARE.
 #include <sys/types.h>
 
 #include <curl/curl.h>
-
-#include "sha1.h"
+#include <openssl/sha.h>
 
 #include "util.h"
 #include "hashtable.h"
 #include "parse.h"
 #include "server.h"
-#include "sha1.h"
 #include "torrent.h"
 #include "tracker.h"
 

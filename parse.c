@@ -33,8 +33,8 @@ THE SOFTWARE.
 
 #include <ctype.h> /* isdigit */
 #include <inttypes.h> /* int64_t */
+#include <openssl/sha.h>
 
-#include "sha1.h"
 #include "parse.h"
 #include "hashtable.h"
 
@@ -103,14 +103,14 @@ close_buffer(buffer *b)
 inline void
 start_hashing(buffer *b)
 {
-    SHA1_start(&b->sha1);
+    SHA1_Init(&b->sha1);
     b->hashing = 1;
 }
 
 inline void
 stop_hashing(buffer *b, unsigned char *result)
 {
-    SHA1_stop(&b->sha1, result);
+    SHA1_Final(result, &b->sha1);
     b->hashing = 0;
 }
 
@@ -144,7 +144,7 @@ get_byte(buffer *b)
     c = b->buf[b->cur];
     b->cur = (b->cur + 1) % BUF_SIZE;
     if(b->hashing)
-        SHA1_feed(&b->sha1, c);
+        SHA1_Update(&b->sha1, &c, 1);
     return c;
 }
 

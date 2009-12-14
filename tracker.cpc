@@ -32,9 +32,9 @@ THE SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <openssl/sha.h>
 
 #include "dht/dht.h"
-#include "sha1.h"
 
 #include "io.h"
 #include "list.h"
@@ -323,28 +323,19 @@ init_trackers()
 
 /* DHT callbacks */
 
-/* Stupid, stupid, stupid. */
-static void
-SHA1_more(struct sha1_ctx *ctx, unsigned char *buf, int len)
-{
-    int i;
-    for(i = 0; i < len; i++)
-        SHA1_feed(ctx, buf[i]);
-}
-
 void
 dht_hash(void *hash_return, int hash_size,
          const void *v1, int len1,
          const void *v2, int len2,
          const void *v3, int len3)
 {
-    static struct sha1_ctx ctx;
+    static SHA_CTX ctx;
     unsigned char sha1[20];
-    SHA1_start(&ctx);
-    SHA1_more(&ctx, v1, len1);
-    SHA1_more(&ctx, v2, len2);
-    SHA1_more(&ctx, v3, len3);
-    SHA1_stop(&ctx, sha1);
+    SHA1_Init(&ctx);
+    SHA1_Update(&ctx, v1, len1);
+    SHA1_Update(&ctx, v2, len2);
+    SHA1_Update(&ctx, v3, len3);
+    SHA1_Final(sha1, &ctx);
     if(hash_size > 20)
         memset((char*)hash_return + 20, 0, hash_size - 20);
     memcpy(hash_return, sha1, hash_size > 20 ? 20 : hash_size);
