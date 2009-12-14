@@ -188,9 +188,6 @@ connection(tr_list *t, int ipv6, char *event)
     connection(t, ipv6, event);
 }
 
-static int dht_socket = -1;
-static int dht6_socket = -1;
-
 cps void
 dht_announcer(int af)
 {
@@ -265,6 +262,9 @@ init_trackers()
     int rc;
     unsigned char ipv6[16];
     int ipv6_len = 16;
+    static int dht_socket = -1;
+    static int dht6_socket = -1;
+
 
     if(!notracker) {
         if(trackers == NULL)
