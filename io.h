@@ -27,7 +27,9 @@ cpc_condvar *cpc_timeout_condvar(cpc_timeout *timeout);
 int cpc_timeout_expired(cpc_timeout *timeout);
 cps void cpc_timeout_destroy(cpc_timeout *timeout);
 
+cps void cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c);
 cps int cpc_full_read(int fd, char *buf, int len);
 cps int cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len);
 cps int cpc_full_write(int fd, const char *buf, int len);
 cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
+

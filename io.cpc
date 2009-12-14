@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <poll.h>
 #include <assert.h>
 
+#include "cpc/cpc_barrier.h"
 #include "io.h"
 
 #define _TIMEOUT_EXPIRED 1
@@ -112,6 +113,26 @@ cpc_timeout_destroy(cpc_timeout *timeout)
         cpc_condvar_release(timeout->expire);
         free(timeout);
     }
+}
+
+cps void
+cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c)
+{
+    cpc_barrier *barrier = cpc_barrier_get(3);
+
+    cpc_spawn {
+        cpc_io_wait(fd1, CPC_IO_IN, c);
+        cpc_signal(c);
+        cpc_barrier_await(barrier);
+    }
+
+    cpc_spawn {
+        cpc_io_wait(fd2, CPC_IO_IN, c);
+        cpc_signal(c);
+        cpc_barrier_await(barrier);
+    }
+
+    cpc_barrier_await(barrier);
 }
 
 cps int
