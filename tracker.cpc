@@ -287,6 +287,7 @@ init_trackers()
         static unsigned char dht_id[20];
         struct sockaddr_in sin;
         unsigned char v[4] = "HK\0\0";
+        int one = 1;
 
         rc = dht_random_bytes(dht_id, 20);
         if(rc < 20) {
@@ -330,6 +331,15 @@ init_trackers()
             /* BEP-32 has an explanation of this. */
             memcpy(&sin6.sin6_addr, ipv6, 16);
             sin6.sin6_port = htons(peer_port);
+
+            rc = setsockopt(dht6_socket, IPPROTO_IPV6, IPV6_V6ONLY,
+                            &one, sizeof(one));
+            if(rc < 0) {
+                perror("setsockopt(IPV6_V6ONLY)");
+                close(dht6_socket);
+                dht6_socket = -1;
+                goto dht6_done;
+            }
 
             rc = bind(dht6_socket, (struct sockaddr*)&sin6, sizeof(sin6));
             if(rc < 0) {
