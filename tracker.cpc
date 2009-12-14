@@ -234,6 +234,8 @@ dht_loop(int dht_socket, int dht6_socket)
 
         if(dht6_socket < 0)
             cpc_io_wait(dht_socket, CPC_IO_IN, cpc_timeout_condvar(timeout));
+        else if(dht_socket < 0)
+            cpc_io_wait(dht6_socket, CPC_IO_IN, cpc_timeout_condvar(timeout));
         else
             cpc_io_wait_2(dht_socket, dht6_socket,
                           cpc_timeout_condvar(timeout));
@@ -292,20 +294,22 @@ init_trackers()
             goto dht_done;
         }
 
-        dht_socket = socket(PF_INET, SOCK_DGRAM, 0);
-        if(dht_socket < 0) {
-            perror("socket(dht)");
-            goto dht_done;
-        }
+        if(!noipv4) {
+            dht_socket = socket(PF_INET, SOCK_DGRAM, 0);
+            if(dht_socket < 0) {
+                perror("socket(dht)");
+                goto dht_done;
+            }
 
-        memset(&sin, 0, sizeof(sin));
-        sin.sin_family = AF_INET;
-        sin.sin_port = htons(peer_port);
+            memset(&sin, 0, sizeof(sin));
+            sin.sin_family = AF_INET;
+            sin.sin_port = htons(peer_port);
 
-        rc = bind(dht_socket, (struct sockaddr*)&sin, sizeof(sin));
-        if(rc < 0) {
-            perror("bind(dht_socket)");
-            goto dht_fail;
+            rc = bind(dht_socket, (struct sockaddr*)&sin, sizeof(sin));
+            if(rc < 0) {
+                perror("bind(dht_socket)");
+                goto dht_fail;
+            }
         }
 
         if(!noipv6)
@@ -345,7 +349,8 @@ init_trackers()
             goto dht_fail;
 
         cpc_spawn dht_loop(dht_socket, dht6_socket);
-        cpc_spawn dht_announcer(AF_INET);
+        if(dht_socket > 0)
+            cpc_spawn dht_announcer(AF_INET);
         if(dht6_socket > 0)
             cpc_spawn dht_announcer(AF_INET6);
         goto dht_done;
