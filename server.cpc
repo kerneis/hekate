@@ -633,7 +633,8 @@ stream_writer(int fd)
             perror("getpeername");
         } else {
             if(sin6.sin6_family == AF_INET6 &&
-               IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)) {
+               ((!noipv4 && IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)) ||
+                (!noipv6 && !IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)))) {
                 rc = send_dht_port(fd, peer_port);
                 if(rc < 0)
                     goto done;
