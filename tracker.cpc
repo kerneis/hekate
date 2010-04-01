@@ -223,8 +223,7 @@ dht_announcer(int af)
 cps void
 dht_loop(int dht_socket, int dht6_socket)
 {
-    static time_t tosleep = 0;  /* static because of CPC bug */
-    static int sleeping = 0;    /* idem */
+    time_t tosleep = 0;
 
     while(1) {
         int rc;
