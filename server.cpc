@@ -471,7 +471,7 @@ send_chunk(int fd, struct chunk *chunk)
     rc = find_chunk(t, chunk->offset * t->p_length + chunk->begin,
                     chunk->length, &first, &last, &offset, NULL);
     if(rc < 0) {
-        fprintf(stderr, "Couldn't find chunk.\n");
+        debugf(1, "%3d couldn't find chunk\n", fd);
         return -1;
     }
 
@@ -534,7 +534,7 @@ handshake(hashtable *ht, int fd)
 {
     int rc, numread, i;
     const char *protocol = "\023BitTorrent protocol";
-    char *res = NULL, *tmp = NULL, t[68];
+    char *res = NULL, *tmp = NULL, t[68], id[41];
     struct torrent *torrent = NULL;
 
     /* The wikified spec implies that we must send our handshake as soon as
@@ -548,23 +548,25 @@ handshake(hashtable *ht, int fd)
     }
 
     if(memcmp(t, protocol, 20) != 0) {
-        debugf(1, "(handshake)bad protocol.\n");
+        for(i = 0; i<20; i++) {
+            unsigned char c = t[i];
+            snprintf(id + i, 2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
+        }
+        debugf(1, "%3d bad protocol: %s\n", fd, id);
         return -1;
     }
 
     torrent = ht_get(ht, t + 28);
+
+    for(i = 0; i<20; i++)
+        snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(t + 28 + i));
+
     if(!torrent) {
-        fprintf(stderr, "(handshake): cannot find hash ");
-        for(int i = 0; i<20; i++)
-            fprintf(stderr, "%.2x", (unsigned char)*(t + 28 + i));
-        fprintf(stderr, "\n");
+        debugf(2, "%3d cannot find hash: %s\n", fd, id);
         return -1;
     }
 
-    debugf(2, "%3d torrent requested: ", fd);
-    for(i = 0; i<20; i++)
-        debugf(2, "%.2x", (unsigned char)*(t + 28 + i));
-    debugf(2, "\n");
+    debugf(2, "%3d torrent requested: %s\n", fd, id);
 
     peers[fd].t = torrent;
     peers[fd].credit = 0;
@@ -607,12 +609,12 @@ handshake(hashtable *ht, int fd)
     peers[fd].dht = !!(t[1 + 19 + 7] & 1);
     peers[fd].ltep = !!(t[1 + 19 + 5] & 0x10);
 
-    debugf(2, "%3d peer-id ", fd);
     for(i = 0; i < 20; i++) {
         unsigned char c = t[48 + i];
-        debugf(2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
+        snprintf(id + i, 2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
     }
-    debugf(2, "%s%s\n",
+    debugf(2, "%3d peer-id %s %s%s\n",
+           fd, id,
            peers[fd].dht ? " (DHT)" : "",
            peers[fd].ltep ? " (LTEP)" : "");
 
@@ -696,7 +698,7 @@ stream_writer(int fd)
             chunk = peers[fd].list;
 
             if(chunk->length > initial_credit) {
-                debugf(1, "Chunk larger than max credit!\n");
+                debugf(1, "%3d chunk larger than max credit!\n", fd);
                 goto done;
             }
 
@@ -785,8 +787,7 @@ stream_reader(int fd)
         DO_NTOHL(length, buf + start);
 
         if(length + 4 > BUF_LENGTH) {
-            fprintf(stderr,
-                    "%3d unbelievably long message (%d bytes).\n", fd, length);
+            debugf(1, "%3d unbelievably long message (%d bytes)\n", fd, length);
             goto fail;
         }
 
@@ -820,7 +821,7 @@ stream_reader(int fd)
         debugf(4, "%3d <- type = %d, length = %d\n", fd, type, length);
 
         if(type != 5 && type != 20 && length > 20) {
-            fprintf(stderr, "%3d unbelievably long message!\n", fd);
+            debugf(1, "%3d unbelievably long message!\n", fd);
             goto fail;
         }
 
@@ -841,7 +842,7 @@ stream_reader(int fd)
         case 6:
         case 8:
             if(length < 13) {
-                fprintf(stderr, "Message too short.\n");
+                debugf(1, "%3d message too short\n");
                 goto fail;
             }
 
@@ -856,7 +857,7 @@ stream_reader(int fd)
                The FAST extension solves the issue, but it's somewhat
                overkill. */
             if(!peers[fd].unchoked) {
-                debugf(2, "%3d %s in choked state.\n",
+                debugf(2, "%3d %s in choked state\n",
                        fd, type == 6 ? "request" : "cancel");
                 assert(peers[fd].list == NULL);
                 break;
@@ -866,14 +867,14 @@ stream_reader(int fd)
             DO_NTOHL(begin, buf + start + 4 + 5);
             DO_NTOHL(chunk_len, buf + start + 4 + 9);
             if(chunk_len == 0){
-                fprintf(stderr, "Request length is zero.\n");
+                debugf(1, "%3d request length is zero\n", fd);
                 goto fail;
             }
             debugf(3, "%3d %s: index = %u\tbegin = %u\tlength = %u\n",
                    fd, type == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
             if(chunk_len > 1024 * 1024) {
-                fprintf(stderr, "Unbelievably large chunk size requested.\n");
+                debugf(1, "%3d unbelievably large chunk size requested\n");
                 goto fail;
             }
 
@@ -885,7 +886,7 @@ stream_reader(int fd)
                                 chunk_len,
                                 &first, &last, &offset, &last_len);
                 if(rc < 0) {
-                    fprintf(stderr, "find_chunk fail.\n");
+                    debugf(1, "%3d find_chunk fail\n", fd);
                     goto fail;
                 }
                 peers[fd].list = add_chunk(peers[fd].list,
@@ -905,11 +906,11 @@ stream_reader(int fd)
             break;
 
         case 7:
-            fprintf(stderr, "%3d unexpected piece message.\n", fd);
+            debugf(1, "%3d unexpected piece message\n", fd);
             goto fail;
 
         default:
-            fprintf(stderr, "%3d unexpected message.\n", fd);
+            debugf(1, "%3d unexpected message\n", fd);
             goto fail;
         }
         start += 4 + length;
@@ -951,7 +952,7 @@ client(hashtable *t, int client_fd)
 
     rc = handshake(t, client_fd);
     if(rc < 0) {
-        debugf(1, "(client)broken handshake -- dropping.\n");
+        debugf(1, "%3d broken handshake -- dropping\n", client_fd);
         goto done;
     }
 
@@ -967,7 +968,7 @@ client(hashtable *t, int client_fd)
     cpc_barrier_await(peers[client_fd].barrier);
 
  done:
-    debugf(1, "%3d closing.\n", client_fd);
+    debugf(1, "%3d closing\n", client_fd);
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
 
@@ -1046,18 +1047,18 @@ listening(hashtable * table)
             cpc_sleep(1);
             continue;
         }
-        debugf(2, "%3d accepted.\n", client_fd);
+        debugf(2, "%3d accepted\n", client_fd);
         assert(!peers[client_fd].t);
 
         /* XXX */
         if(client_fd > FD_MAX) {
-            fprintf(stderr, "%3d beyond FD_MAX -- dropping\n", client_fd);
+            debugf(1, "%3d beyond FD_MAX -- dropping\n", client_fd);
             goto fail;
         }
 
         assert(numpeers >= 0 && numpeers <= maxpeers);
         if(numpeers >= maxpeers) {
-            debugf(1, "%3d dropping early.\n", client_fd);
+            debugf(1, "%3d dropping early\n", client_fd);
             goto fail;
         }
 
