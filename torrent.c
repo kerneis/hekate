@@ -240,7 +240,7 @@ parse_torrent(char *curr_path, benc *raw)
 
     elmt = calloc(1, sizeof(struct torrent));
     if(!elmt) {
-        perror("(parse_torrent)caloc");
+        perror("(parse_torrent)calloc");
         goto internal_error;
     }
 
