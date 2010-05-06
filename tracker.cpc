@@ -103,6 +103,7 @@ writer(void *ptr, size_t size, size_t nmemb, void *stream)
 cps void
 connection(tr_list *t, int ipv6, char *event)
 {
+  connection:;
     CURLcode rc = NULL;
     CURL *e_handle = NULL;
     char *request = NULL;
@@ -180,14 +181,14 @@ connection(tr_list *t, int ipv6, char *event)
     curl_easy_cleanup(e_handle);
 
     cpc_sleep(interval > 0 ? interval : 1800);
-    connection(t, ipv6, NULL);
-    return;
+    event = NULL;
+    goto connection;
 
  fail:
     cpc_attach(sched);
     fprintf(stderr, "Couldn't allocate CURL request.\n");
     cpc_sleep(interval > 0 ? interval : 1800);
-    connection(t, ipv6, event);
+    goto connection;
 }
 
 cps void
