@@ -98,15 +98,16 @@ remove_chunk(struct chunk* list, int offset, int begin, int length)
     while(tmp){
         if(tmp -> offset == offset &&
            tmp -> begin  == begin &&
-           tmp -> length == length){
+           tmp -> length == length) {
             if(prec == NULL)
-                return list-> next;
+                list = list->next;
             else
-                prec -> next = tmp ->next;
+                prec->next = tmp->next;
+            free(tmp);
             break;
         }
         prec = tmp;
-        tmp = tmp -> next;
+        tmp = tmp->next;
     }
 
     return list;
