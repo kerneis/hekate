@@ -727,11 +727,12 @@ stream_writer(int fd)
                 }
             }
 
+            assert(peers[fd].list == chunk);
             peers[fd].list = peers[fd].list->next;
             rc = send_chunk(fd, chunk);
+            free(chunk);
             if(rc < 0)
                 goto done;
-            free(chunk);
             cpc_yield();
         }
     }
