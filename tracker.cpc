@@ -127,6 +127,9 @@ connection(tr_list *t, int ipv6, char *event)
             continue;
         }
 
+        if(getenv( "HK_CURL_VERBOSE") != NULL)
+            curl_easy_setopt(e_handle, CURLOPT_VERBOSE, 1);
+
         rc = curl_easy_setopt(e_handle, CURLOPT_URL, request);
         if(rc != CURLE_OK) goto curl_error;
 
