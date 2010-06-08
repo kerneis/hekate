@@ -543,7 +543,7 @@ handshake(hashtable *ht, int fd)
 
     numread = cpc_partial_read(fd, t, 48, 68);
     if(numread < 48) {
-        perror("(handshake)cpc_full_read");
+        perror("(handshake)cpc_partial_read");
         return -1;
     }
 
