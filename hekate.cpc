@@ -45,7 +45,7 @@ THE SOFTWARE.
 #include "torrent.h"
 #include "tracker.h"
 
-
+int list_only = 0;
 
 /*
   getting the directory path and try to add them all to our hashtable
@@ -117,9 +117,9 @@ upload(hashtable *table, char *path)
                     snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(elmt->info_hash + i));
 
                 if(!!validate_torrent(elmt))
-                    debugf(2, "Added: %s %s\n", id, curr_path);
+                    debugf(1, "Added: %s %s\n", id, curr_path);
                 else {
-                    debugf(1, "Skipped: %s %s\n", id, curr_path);
+                    debugf(2, "Skipped: %s %s\n", id, curr_path);
                     close_buffer(buf);
                     free_torrent(elmt);
                     free(curr_path);
@@ -157,7 +157,7 @@ main(int argc, char **argv)
 
     while(1) {
         int opt;
-        opt = getopt(argc, argv, "th46p:N:C:T:d:");
+        opt = getopt(argc, argv, "thl46p:N:C:T:d:");
         if(opt == -1)
             break;
         switch(opt) {
@@ -166,6 +166,9 @@ main(int argc, char **argv)
             break;
         case 'h':
             nodht = 1;
+            break;
+        case 'l':
+            list_only = 1;
             break;
         case '4':
             if(noipv4 == 1)
@@ -237,8 +240,14 @@ main(int argc, char **argv)
     if(optind >= argc)
         goto usage;
 
+    if(list_only && debug_level < 1)
+        debug_level = 1;
+
     for(i = optind; i < argc; i++)
         upload(table, argv[i]);
+
+    if(list_only)
+        goto quit;
 
     init_trackers(trackers);
 
@@ -250,6 +259,7 @@ main(int argc, char **argv)
 
     cpc_main_loop();
 
+  quit:
     curl_global_cleanup();
 
     ht_free(table);
@@ -259,8 +269,8 @@ main(int argc, char **argv)
     usage:
     fprintf(stderr,
         "Usage: hekate "
-        "[ -t ] [ -h ] [ -4 | -6 ] [ -p port ] [ -N max_unchoked ] [-C credit]\n"
-        "              [-d debug]\n"
+        "[ -t ] [ -h ] [ -l ] [ -4 | -6 ] [ -p port ] [ -N max_unchoked ]\n"
+        "              [-C credit] [-d debug]\n"
         "              directory...\n");
     exit(1);
 }

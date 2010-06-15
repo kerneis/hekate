@@ -306,6 +306,6 @@ validate_torrent(struct torrent *t)
     return 1;
 
   fail:
-    debugf(1, "Validation failed for file %s\n", t->files[i]->path);
+    debugf(2, "Validation failed for file %s\n", t->files[i]->path);
     return 0;
 }
