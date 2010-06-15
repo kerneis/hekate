@@ -57,6 +57,7 @@ struct torrent {
 
 struct torrent *parse_torrent(char *curr_path, benc *raw);
 struct torrent * ht_load(char *curr_path, benc *raw);
+int validate_torrent(struct torrent *t);
 void free_torrent(struct torrent *t);
 
 #endif
