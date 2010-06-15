@@ -99,6 +99,7 @@ upload(hashtable *table, char *path)
                 buf = open_buffer(curr_path);
                 if(!buf) {
                     fprintf(stderr, "(upload)open_buffer %s\n", curr_path);
+                    close_buffer(buf);
                     free(curr_path);
                     continue;
                 }
@@ -107,6 +108,7 @@ upload(hashtable *table, char *path)
 
                 elmt = parse_torrent(path, result);
                 if(!elmt) {
+                    close_buffer(buf);
                     free(curr_path);
                     continue;
                 }
@@ -118,6 +120,7 @@ upload(hashtable *table, char *path)
                     debugf(2, "Added: %s %s\n", id, curr_path);
                 else {
                     debugf(1, "Skipped: %s %s\n", id, curr_path);
+                    close_buffer(buf);
                     free_torrent(elmt);
                     free(curr_path);
                     continue;
