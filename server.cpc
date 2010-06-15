@@ -747,6 +747,7 @@ stream_writer(int fd)
  done:
     peers[fd].dying = 1;
     shutdown(fd, 2);
+    cpc_signal_fd(fd, CPC_IO_IN);
 
     /* If we failed to unchoke the peer above, then a slot is still vacant. */
     if(numunchoked < maxunchoked)
@@ -972,6 +973,7 @@ client(hashtable *t, int client_fd)
 
     peers[client_fd].dying = 1;
     shutdown(client_fd, 2);
+    cpc_signal_fd(client_fd, CPC_IO_OUT);
     cpc_signal(peers[client_fd].writer_cond);
     cpc_barrier_await(peers[client_fd].barrier);
 
