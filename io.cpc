@@ -36,7 +36,7 @@ THE SOFTWARE.
 #include "cpc/cpc_lib.h"
 #include "io.h"
 
-const int io_timeout = 60; /* one minute timeout per I/O */
+const int io_timeout = 60; /* one minute timeout per I/O (read) */
 
 cps void
 cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c)
@@ -109,33 +109,21 @@ cpc_full_write(int fd, const char *buf, int len)
     size_t pos;
     ssize_t rc;
 
-    cpc_timeout *t = cpc_timeout_get(io_timeout, 0);
-    cpc_condvar *c = cpc_timeout_condvar(t);
-
     pos = 0;
     while(1) {
         /* Don't io_wait the first time. */
         rc = write(fd, buf + pos, len - pos);
         if(rc < 0) {
-            if(errno != EAGAIN) {
-                pos = -1;
-                break;
-            }
+            if(errno != EAGAIN)
+                return -1;
         } else {
             pos += rc;
             if(pos >= len)
                 break;
         }
-        if(cpc_timeout_expired(t) ||
-           cpc_io_wait(fd, CPC_IO_OUT, c) == CPC_CONDVAR) {
-            errno = EINTR;
-            pos = -1;
-            debugf(2, "%3d timed out\n", fd);
-            break;
-        }
+        cpc_io_wait(fd, CPC_IO_OUT);
     }
 
-    cpc_timeout_destroy(t);
     return pos;
 }
 
@@ -146,9 +134,6 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
     ssize_t rc;
     int i;
 
-    cpc_timeout *t;
-    cpc_condvar *c;
-
     if(iovcnt == 0)
         return 0;
     else if(iovcnt == 1)
@@ -157,9 +142,6 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
     total = 0;
     for(i = 0; i < iovcnt; i++)
         total += iov[i].iov_len;
-
-    t = cpc_timeout_get(io_timeout, 0);
-    c = cpc_timeout_condvar(t);
 
     pos = 0;
     while(1) {
@@ -191,24 +173,15 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
         }
 
         if(rc < 0) {
-            if(errno != EAGAIN) {
-                pos = -1;
-                break;
-            }
+            if(errno != EAGAIN)
+                return -1;
         } else {
             pos += rc;
             if(pos >= total)
                 break;
         }
-        if(cpc_timeout_expired(t) ||
-           cpc_io_wait(fd, CPC_IO_OUT, c) == CPC_CONDVAR) {
-            errno = EINTR;
-            pos = -1;
-            debugf(2, "%3d timed out\n", fd);
-            break;
-        }
+        cpc_io_wait(fd, CPC_IO_OUT);
     }
 
-    cpc_timeout_destroy(t);
     return pos;
 }
