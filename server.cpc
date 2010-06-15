@@ -405,6 +405,10 @@ send_multi_chunk(int fd, struct chunk *chunk,
         goto fail;
     }
 
+    debugf(3, "%3d sent chunk: length=%d, offset=%lld\n",
+           fd, chunk->length,
+           (long long int)chunk->offset*t->p_length + chunk->begin);
+
     t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
@@ -522,6 +526,9 @@ send_chunk(int fd, struct chunk *chunk)
     }
 
  done:
+    debugf(3, "%3d sent chunk: length=%d, offset=%lld\n",
+           fd, chunk->length,
+           (long long int)chunk->offset*t->p_length + chunk->begin);
     t->uploaded += chunk->length;
     peers[fd].credit -= chunk->length;
     assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
