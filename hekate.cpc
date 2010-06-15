@@ -54,14 +54,14 @@ void
 upload(hashtable *table, char *path)
 {
     DIR *dir;
-    int pos, rc;
-    unsigned char tmp[20];
+    int pos, rc, i;
     char *curr_path;
     buffer *buf;
     benc *result;
     struct torrent *elmt;
     struct dirent *entry;
     struct stat st;
+    char id[41];
 
     if(path[strlen(path)-1] == '/')
         path[strlen(path)-1] = '\0';
@@ -104,13 +104,18 @@ upload(hashtable *table, char *path)
                 }
 
                 result = parsing(buf);
-                memcpy(tmp, result->hash, 20);
 
                 elmt = parse_torrent(path, result);
                 if(!elmt) {
                     free(curr_path);
                     continue;
                 }
+
+                for(i = 0; i<20; i++)
+                    snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(elmt->info_hash + i));
+
+                debugf(2, "Added: %s %s\n", id, curr_path);
+
 
                 ht_insert(table, elmt);
 
