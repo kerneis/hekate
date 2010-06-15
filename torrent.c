@@ -24,6 +24,10 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 #include "parse.h"
 #include "torrent.h"
@@ -283,4 +287,25 @@ parse_torrent(char *curr_path, benc *raw)
     free_benc(raw);
     free_torrent(elmt);
     return NULL;
+}
+
+extern void debugf(int level, const char *format, ...);
+
+int
+validate_torrent(struct torrent *t)
+{
+    int i;
+    struct stat s;
+
+    for(i = 0; i < t->num_files; i++) {
+        if(stat(t->files[i]->path, &s) < 0 ||
+           s.st_size != t->files[i]->length)
+            goto fail;
+    }
+
+    return 1;
+
+  fail:
+    debugf(1, "Validation failed for file %s\n", t->files[i]->path);
+    return 0;
 }
