@@ -15,6 +15,9 @@ Do not contact any trackers.
 .BI \-h
 Do not participate in the DHT.
 .TP
+.BI \-l
+List the valid .torrent files and quit immediately.
+.TP
 .BI \-4
 Only announce torrents over IPv4.
 .TP
