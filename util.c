@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include "util.h"
 
@@ -56,6 +57,7 @@ prefetch(void *begin, size_t length)
     size_t br = b / pagesize * pagesize;
     size_t l = length + (b - br);
     size_t lr = (l + (pagesize - 1)) / pagesize * pagesize;
+    assert(length > 0 && length <= LARGE_CHUNK);
     return posix_madvise((void*)br, lr, POSIX_MADV_WILLNEED);
 }
 

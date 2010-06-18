@@ -882,7 +882,7 @@ stream_reader(int fd)
             debugf(3, "%3d %s: index = %u\tbegin = %u\tlength = %u\n",
                    fd, type == 6 ? "request" : "cancel",
                    index, begin, chunk_len);
-            if(chunk_len > 1024 * 1024) {
+            if(chunk_len > LARGE_CHUNK) {
                 debugf(1, "%3d unbelievably large chunk size requested\n");
                 goto fail;
             }
@@ -905,7 +905,8 @@ stream_reader(int fd)
                         prefetch(peers[fd].t->files[i]->map +
                                  (i == first ? offset : 0),
                                  i == last ?
-                                 last_len : peers[fd].t->files[i]->length);
+                                 last_len : peers[fd].t->files[i]->length -
+                                 (i == first ? offset : 0));
                 }
                 cpc_signal(peers[fd].writer_cond);
             } else {
