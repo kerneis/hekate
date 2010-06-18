@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include <fcntl.h>
 #include <assert.h>
 
+#include <cpc/cpc_runtime.h>
 #include <cpc/cpc_lib.h>
 
 #include "util.h"

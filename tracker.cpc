@@ -36,6 +36,7 @@ THE SOFTWARE.
 
 #include "dht/dht.h"
 
+#include <cpc/cpc_runtime.h>
 #include <cpc/cpc_lib.h>
 #include "io.h"
 #include "list.h"

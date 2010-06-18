@@ -38,6 +38,8 @@ THE SOFTWARE.
 #include <curl/curl.h>
 #include <openssl/sha.h>
 
+#include <cpc/cpc_runtime.h>
+
 #include "util.h"
 #include "hashtable.h"
 #include "parse.h"
