@@ -24,8 +24,7 @@ clean:
 	rm -f hekate
 
 .cpc.cpi:
-	gcc -E -x c $(CFLAGS) -include cpc/cpc_runtime.h \
-	  -o $@ $<
+	gcc -E -x c $(CFLAGS) -o $@ $<
 
 .cpi.c:
 	$(CPC) $(CPCOPTS) $< --out $@

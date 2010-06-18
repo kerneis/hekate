@@ -33,7 +33,8 @@ THE SOFTWARE.
 #include <poll.h>
 #include <assert.h>
 
-#include "cpc/cpc_lib.h"
+#include <cpc/cpc_runtime.h>
+#include <cpc/cpc_lib.h>
 #include "io.h"
 
 const int io_timeout = 60; /* one minute timeout per I/O (read) */
