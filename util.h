@@ -24,6 +24,8 @@ THE SOFTWARE.
 extern int debug_level;
 extern size_t pagesize;
 
+#define LARGE_CHUNK (1024*1024)
+
 /* This would be better written with the GCC extensions for unaligned
    access, but CPC cannot parse GCC attributes right now. */
 #if defined(i386) || defined(__mc68020__) || defined(__x86_64__)
