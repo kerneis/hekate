@@ -27,8 +27,8 @@ THE SOFTWARE.
 #include "parse.h"
 
 struct file {
-    int64_t offset;
-    int64_t length;
+    uint64_t offset;
+    uint64_t length;
     char *path;
     char *map;
 };
@@ -39,8 +39,8 @@ struct torrent {
     struct torrent *next;
 
     /* pieces size in bytes */
-    int64_t p_length;
-    int32_t num_chunks;
+    uint64_t p_length;
+    uint32_t num_chunks;
 
     int num_files;
     struct file **files;
