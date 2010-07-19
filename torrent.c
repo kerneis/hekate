@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <assert.h>
 
 
 #include "parse.h"
@@ -108,7 +109,7 @@ int
 parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, j, k, rc;
-    int64_t offset;
+    uint64_t offset;
     benc *dico;
     struct file **tmp_files;
     struct file *f;
@@ -135,6 +136,7 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 
             if(strcmp((dico->set.l[j])->s, "length") == 0 &&
                (dico->set.l[j+1])->type == INT) {
+                assert(dico->set.l[j+1]->i >=0);
                 f->length = dico->set.l[j+1]->i;
             } else if(strcmp((dico->set.l[j])->s, "path") == 0 &&
                       (dico->set.l[j+1])->type == LIST) {
@@ -188,6 +190,7 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
                 return -1;
             }
             
+            assert(raw->set.l[i+1]->i >= 0);
             elmt->num_files = 1;
             elmt->files[0]->length = raw->set.l[i+1]->i;
         } else if(strcmp((raw->set.l[i])->s, "files") == 0 &&
@@ -217,6 +220,7 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
             }
         } else if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
                   (raw->set.l[i+1])->type == INT) {
+            assert(raw->set.l[i+1]->i >= 0);
             elmt->p_length = (raw->set.l[i+1])->i;
             
             /* now we can compute chunks offsets */
@@ -227,6 +231,7 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
             }
         } else if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
                   (raw->set.l[i+1])->type == STRING) {
+            assert(raw->set.l[i+1]->size >= 0);
             elmt->num_chunks = raw->set.l[i+1]->size/20;
         } else if(strcmp((raw->set.l[i])->s, "private") == 0 &&
                   (raw->set.l[i+1])->type == INT) {

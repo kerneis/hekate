@@ -314,12 +314,12 @@ map_file(struct torrent *t, int index)
 }
 
 int
-find_chunk(struct torrent *t, uint64_t begin, unsigned int length,
+find_chunk(struct torrent *t, uint64_t begin, uint64_t length,
            int *first_return, int *last_return,
-           unsigned *offset_return, unsigned *last_len_return)
+           uint64_t *offset_return, uint64_t *last_len_return)
 {
     int i, first = -1, last = -1;
-    unsigned offset, last_len;
+    uint64_t offset, last_len;
     struct file *f;
 
     for(i = 0; i < t->num_files; i++) {
@@ -363,7 +363,7 @@ find_chunk(struct torrent *t, uint64_t begin, unsigned int length,
 
 cps int
 send_multi_chunk(int fd, struct chunk *chunk,
-                 int first, int last, unsigned offset)
+                 int first, int last, uint64_t offset)
 {
     unsigned char buf[8];
     unsigned char *body;
@@ -468,7 +468,7 @@ send_chunk(int fd, struct chunk *chunk)
     void *source;
     struct torrent *t = peers[fd].t;
     int first, last;
-    unsigned offset;
+    uint64_t offset;
     struct file *f;
 
     assert(peers[fd].unchoked && peers[fd].credit >= chunk->length);
@@ -811,8 +811,7 @@ stream_reader(int fd)
 
             rc = cpc_partial_read(fd, buf + size,
                                   length + 4 - size, BUF_LENGTH - size);
-            /* Careful, coercion to unsigned */
-            if(rc < 0 || rc < length + 4 - size)
+            if(rc < ((int32_t) length + 4 - size))
                 goto fail;
             end += rc;
             size = end;
@@ -890,7 +889,7 @@ stream_reader(int fd)
 
             if(type == 6) {
                 int rc, i, first, last;
-                unsigned offset, last_len;
+                uint64_t offset, last_len;
                 rc = find_chunk(peers[fd].t,
                                 index * peers[fd].t->p_length + begin,
                                 chunk_len,
