@@ -1,7 +1,7 @@
 CPC=cpc.asm.exe
 
 CLIBS=-lcurl
-CDEBUGFLAGS=-O3 -Wall -g
+CDEBUGFLAGS=-O3 -Wall -Wno-uninitialized -g
 CFLAGS=$(CDEBUGFLAGS) $(CLIBS) $(EXTRA_DEFINES)
 
 LDLIBS=-lcurl -lssl -lm -pthread -lcpcfull
