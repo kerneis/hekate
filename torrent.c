@@ -136,7 +136,8 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 
             if(strcmp((dico->set.l[j])->s, "length") == 0 &&
                (dico->set.l[j+1])->type == INT) {
-                assert(dico->set.l[j+1]->i >=0);
+                if(dico->set.l[j+1]->i < 0)
+                    return -1;
                 f->length = dico->set.l[j+1]->i;
             } else if(strcmp((dico->set.l[j])->s, "path") == 0 &&
                       (dico->set.l[j+1])->type == LIST) {
@@ -179,6 +180,9 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
             
         if(strcmp((raw->set.l[i])->s, "length") == 0 &&
            (raw->set.l[i+1])->type == INT) {
+            if(raw->set.l[i+1]->i < 0)
+                return -1;
+
             elmt->files = malloc(sizeof(struct file *));
             if(!elmt->files) {
                 perror("(parse_info)malloc files");
@@ -190,7 +194,6 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
                 return -1;
             }
             
-            assert(raw->set.l[i+1]->i >= 0);
             elmt->num_files = 1;
             elmt->files[0]->length = raw->set.l[i+1]->i;
         } else if(strcmp((raw->set.l[i])->s, "files") == 0 &&
@@ -220,7 +223,8 @@ parse_info(struct torrent *elmt, char *curr_path, benc *raw)
             }
         } else if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
                   (raw->set.l[i+1])->type == INT) {
-            assert(raw->set.l[i+1]->i >= 0);
+            if(raw->set.l[i+1]->i < 0)
+                return -1;
             elmt->p_length = (raw->set.l[i+1])->i;
             
             /* now we can compute chunks offsets */
