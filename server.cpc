@@ -314,7 +314,7 @@ map_file(struct torrent *t, int index)
 }
 
 int
-find_chunk(struct torrent *t, uint64_t begin, uint64_t length,
+(__attribute__((cpc_no_retain)) find_chunk)(struct torrent *t, uint64_t begin, uint64_t length,
            int *first_return, int *last_return,
            uint64_t *offset_return, uint64_t *last_len_return)
 {
