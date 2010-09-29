@@ -953,7 +953,6 @@ cps void
 client(hashtable *t, int client_fd)
 {
     int rc = 0;
-    unsigned char buffer[BUF_LENGTH];
 
     assert(peers[client_fd].t == NULL);
 
