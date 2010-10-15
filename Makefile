@@ -1,10 +1,11 @@
 CPC=cpc.asm.exe
 
-CLIBS=-lcurl
-CDEBUGFLAGS=-O3 -Wall -Wno-uninitialized -g
-CFLAGS=$(CDEBUGFLAGS) $(CLIBS) $(EXTRA_DEFINES)
+CDEBUGFLAGS=-O3 -Wall -Wno-uninitialized
 
-LDLIBS=-lcurl -lssl -lm -pthread -lcpcfull
+CLIBS+=`curl-config --libs`
+CFLAGS+= `curl-config --cflags` $(EXTRA_DEFINES)
+
+LDLIBS+=`curl-config --libs` -lssl -lm -pthread -lcpcfull
 
 .SUFFIXES: .cpc .cpi
 
@@ -24,7 +25,7 @@ clean:
 	rm -f hekate
 
 .cpc.cpi:
-	gcc -E -x c $(CFLAGS) -o $@ $<
+	$(CC) -E -x c $(CFLAGS) $(CLIBS) -o $@ $<
 
 .cpi.c:
 	$(CPC) $(CPCOPTS) $< --out $@
