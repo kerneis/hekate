@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2009 by Pejman Attar, Yoann Canal, Juliusz Chroboczek and
+Copyright (c) 2009-2010 by Pejman Attar, Yoann Canal, Juliusz Chroboczek and
                       Gabriel Kerneis
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
