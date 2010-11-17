@@ -3,7 +3,7 @@ CPC=cpc.asm.exe
 CDEBUGFLAGS=-O3 -Wall -Wno-uninitialized
 
 CLIBS+=`curl-config --libs`
-CFLAGS+= `curl-config --cflags` $(EXTRA_DEFINES)
+CFLAGS+= `curl-config --cflags` $(CDEBUGFLAGS) $(EXTRA_DEFINES)
 
 LDLIBS+=`curl-config --libs` -lssl -lm -pthread -lcpcfull
 
