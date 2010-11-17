@@ -26,8 +26,6 @@ extern size_t pagesize;
 
 #define LARGE_CHUNK (1024*1024)
 
-/* This would be better written with the GCC extensions for unaligned
-   access, but CPC cannot parse GCC attributes right now. */
 #if defined(i386) || defined(__mc68020__) || defined(__x86_64__)
 #define DO_NTOHS(_d, _s) do { _d = ntohs(*(unsigned short*)(_s)); } while(0)
 #define DO_NTOHL(_d, _s) do { _d = ntohl(*(unsigned*)(_s)); } while(0)
