@@ -1,0 +1,35 @@
+Hekate
+******
+
+Hekate is a BitTorrent seeder (informally, a "BitTorrent server", or software
+for your "seedbox") designed to handle millions of simultaneous torrents and
+tens of thousands of simultaneously connected peers.
+
+Hekate is written in CPC, an experimental concurrent dialect of C. In order to
+build Hekate, you will need to install the CPC compiler first. 
+
+Installation
+************
+
+To build Hekate, you need to install:
+
+- the CPC compiler [http://www.pps.jussieu.fr/~kerneis/software/cpc],
+- libcurl,
+- libopenssl,
+- libpthread (which is required by CPC anyway),
+
+and run:
+
+  make
+
+Known bugs and limitations
+**************************
+
+- When listening() fails, trackers and dht continue to run whereas Hekate
+  should leave.
+- Hekate uses memmap() for every file it serves, and never releases them.  This
+  means you need enough virtual memory to hold all your files; this might be an
+  issue if you run Hekate on a 32-bits architecture.
+- When compiling for exotic architectures (mips, etc.), some uncessary boxing
+  is performed.  This is a bug in CPC 0.1, which will be fixed in the next CPC
+  release (memcpy is not registered as a "no-retain" function).
