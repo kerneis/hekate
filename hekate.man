@@ -25,7 +25,7 @@ Only announce torrents over IPv4.
 Only announce torrents over IPv6.
 .TP
 .BI \-p " port"
-Specify the listening TCP port.
+Specify the listening TCP and UDP port.  The default is 6969.
 .TP
 .BI \-N " max_unchoked"
 Specify the maximum number of simultaneously unchoked peers (50 by
