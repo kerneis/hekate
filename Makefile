@@ -15,12 +15,8 @@ hekate: util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o heka
 
 all: hekate
 
-dht/dht.o: dht/dht.c
-	cd dht && $(MAKE) dht.o
-
 clean:
-	cd dht && $(MAKE) clean
-	rm -f *.o *~ *.cpi
+	rm -f *.o *~ *.cpi dht/dht.o
 	for x in *.cpc; do rm -f $${x%.cpc}.c; done;
 	rm -f hekate
 
