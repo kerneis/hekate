@@ -543,7 +543,7 @@ handshake(hashtable *ht, int fd)
 {
     int rc, numread, i;
     const char *protocol = "\023BitTorrent protocol";
-    char *res = NULL, *tmp = NULL, t[68], id[41];
+    char *res = NULL, t[68], id[41];
     struct torrent *torrent = NULL;
 
     /* The wikified spec implies that we must send our handshake as soon as
@@ -580,28 +580,17 @@ handshake(hashtable *ht, int fd)
     peers[fd].t = torrent;
     peers[fd].credit = 0;
 
-    //so all is ok and we can say that all is ok yupiiiii!!!!
-    //now lets generate the ACK response
     res = malloc(1 + 19 + 8 + 20 + 20);
-    tmp = res;
 
-    tmp[0] = 19;
-    tmp ++;
+    strncpy(res, protocol, 20);
 
-    strncpy(tmp, "BitTorrent protocol", 19);
-    tmp += 19;
-
-    memset(tmp, 0, 8);
+    memset(res + 20, 0, 8);
     if(!nodht)
-        tmp[7] |= 1;
-    tmp[5] |= 0x10;
-    tmp += 8;
+        res[20 + 7] |= 1;
+    res[20 + 5] |= 0x10;
 
-    memcpy(tmp, torrent->info_hash, 20);
-    tmp += 20;
-
-    memcpy(tmp, peer_id, 20);
-    tmp += 20;
+    memcpy(res + 28, torrent->info_hash, 20);
+    memcpy(res + 48, peer_id, 20);
 
     rc = send_bitfield(fd, torrent, res, 68);
     free(res);
