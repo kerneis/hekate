@@ -76,6 +76,14 @@ cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
 
     pos = 0;
     while(1) {
+        /* io_wait the first time, it's necessary 95% of the time */
+        if(cpc_timeout_expired(t) ||
+           cpc_io_wait(fd, CPC_IO_IN, c) == CPC_CONDVAR) {
+            errno = EINTR;
+            pos = -1;
+            debugf(2, "%3d timed out\n", fd);
+            break;
+        }
         rc = read(fd, buf + pos, max_len - pos);
         if(rc == 0) {
             errno = EPIPE;
@@ -90,13 +98,6 @@ cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
             pos += rc;
             if(pos >= min_len)
                 break;
-        }
-        if(cpc_timeout_expired(t) ||
-           cpc_io_wait(fd, CPC_IO_IN, c) == CPC_CONDVAR) {
-            errno = EINTR;
-            pos = -1;
-            debugf(2, "%3d timed out\n", fd);
-            break;
         }
     }
 
