@@ -79,21 +79,15 @@ cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
         /* io_wait the first time, it's necessary 95% of the time */
         if(cpc_timeout_expired(t) ||
            cpc_io_wait(fd, CPC_IO_IN, c) == CPC_CONDVAR) {
-            errno = EINTR;
-            pos = -1;
-            debugf(2, "%3d timed out\n", fd);
-            break;
+            goto timeout;
         }
         rc = read(fd, buf + pos, max_len - pos);
         if(rc == 0) {
             errno = EPIPE;
-            pos = -1;
-            break;
+            goto fail;
         } else if(rc < 0) {
-            if(errno != EAGAIN) {
-                pos = -1;
-                break;
-            }
+            if(errno != EAGAIN)
+                goto fail;
         } else {
             pos += rc;
             if(pos >= min_len)
@@ -103,6 +97,13 @@ cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
 
     cpc_timeout_destroy(t);
     return pos;
+
+timeout:
+    debugf(2, "%3d timed out\n", fd);
+    errno = EINTR;
+fail:
+    cpc_timeout_destroy(t);
+    return -1;
 }
 
 cps int
