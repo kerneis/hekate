@@ -553,7 +553,7 @@ handshake(hashtable *ht, int fd)
     numread = cpc_partial_read(fd, t, 48, 68);
     if(numread < 48) {
         perror("(handshake)cpc_partial_read");
-        return -1;
+        goto fail;
     }
 
     if(memcmp(t, protocol, 20) != 0) {
@@ -562,7 +562,7 @@ handshake(hashtable *ht, int fd)
             snprintf(id + i, 2, "%c", c >= 0x21 && c <= 0x7E ? c : '.');
         }
         debugf(1, "%3d bad protocol: %s\n", fd, id);
-        return -1;
+        goto fail;
     }
 
     torrent = ht_get(ht, t + 28);
@@ -572,7 +572,7 @@ handshake(hashtable *ht, int fd)
 
     if(!torrent) {
         debugf(2, "%3d cannot find hash: %s\n", fd, id);
-        return -1;
+        goto fail;
     }
 
     debugf(2, "%3d torrent requested: %s\n", fd, id);
@@ -595,13 +595,13 @@ handshake(hashtable *ht, int fd)
     rc = send_bitfield(fd, torrent, res, 68);
     free(res);
     if(rc < 0)
-        return -1;
+        goto fail;
 
     if(numread < 68) {
         /* Read the rest of the client handshake. */
         rc = cpc_full_read(fd, t + numread, 68 - numread);
         if(rc < 68 - numread)
-            return -1;
+            goto fail;
     }
 
     peers[fd].dht = !!(t[1 + 19 + 7] & 1);
@@ -617,6 +617,9 @@ handshake(hashtable *ht, int fd)
            peers[fd].ltep ? " (LTEP)" : "");
 
     return 0;
+
+fail:
+    return -1;
 }
 
 cps void
