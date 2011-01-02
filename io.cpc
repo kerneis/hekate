@@ -60,28 +60,47 @@ cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c)
 }
 
 cps int
-cpc_full_read(int fd, char *buf, int len)
-{
-    return cpc_partial_read(fd, buf, len, len);
-}
-
-cps int
-cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
+cpc_buffer_read(int fd, cpc_buffer *b, int len)
 {
     size_t pos;
     ssize_t rc;
 
+    assert(b->end - b->start >= 0);
+    pos = b->end - b->start;
+
+    /* No need to read more data */
+    if(pos >= len)
+        return pos;
+
     cpc_timeout *t = cpc_timeout_get(io_timeout, 0);
     cpc_condvar *c = cpc_timeout_condvar(t);
 
-    pos = 0;
+    /* Lazy allocation of the buffer the first time */
+    if(!b->buf) {
+        if(cpc_io_wait(fd, CPC_IO_IN, c) == CPC_CONDVAR) {
+            goto timeout;
+        } else {
+            assert(b->start == 0 && b->end == 0);
+            b->buf = malloc(b->size);
+            goto first_read;
+        }
+    }
+
+    /* Move data to the beginning of buffer */
+    if(b->start > 0) {
+        if(pos > 0)
+            memmove(b->buf, b->buf + b->start, pos);
+        b->start = 0;
+    }
+
     while(1) {
         /* io_wait the first time, it's necessary 95% of the time */
         if(cpc_timeout_expired(t) ||
            cpc_io_wait(fd, CPC_IO_IN, c) == CPC_CONDVAR) {
             goto timeout;
         }
-        rc = read(fd, buf + pos, max_len - pos);
+first_read:
+        rc = read(fd, b->buf + pos, b->size - pos);
         if(rc == 0) {
             errno = EPIPE;
             goto fail;
@@ -90,11 +109,12 @@ cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len)
                 goto fail;
         } else {
             pos += rc;
-            if(pos >= min_len)
+            if(pos >= len)
                 break;
         }
     }
 
+    b->end = pos;
     cpc_timeout_destroy(t);
     return pos;
 
@@ -103,6 +123,7 @@ timeout:
     errno = EINTR;
 fail:
     cpc_timeout_destroy(t);
+    b->end = pos;
     return -1;
 }
 
@@ -187,4 +208,21 @@ cpc_full_writev(int fd, const struct iovec *iov, int iovcnt)
     }
 
     return pos;
+}
+
+cpc_buffer *
+cpc_buffer_get(int size) {
+  cpc_buffer *b = malloc(sizeof(cpc_buffer));
+  b->size = size;
+  b->start = 0;
+  b->end = 0;
+  b->buf = NULL;
+  return b;
+}
+
+void
+cpc_buffer_destroy(cpc_buffer *b) {
+  if(b->buf)
+      free(b->buf);
+  free(b);
 }

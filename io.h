@@ -20,9 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+typedef struct cpc_buffer {
+  int size;
+  int start;
+  int end;
+  unsigned char *buf;
+} cpc_buffer;
+
 cps void cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c);
-cps int cpc_full_read(int fd, char *buf, int len);
-cps int cpc_partial_read(int fd, unsigned char *buf, int min_len, int max_len);
+cps int cpc_buffer_read(int fd, cpc_buffer *b, int len);
 cps int cpc_full_write(int fd, const char *buf, int len);
 cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
 
+cpc_buffer *cpc_buffer_get(int size);
+void cpc_buffer_destroy(cpc_buffer *b);
