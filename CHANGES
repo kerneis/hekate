@@ -1,6 +1,8 @@
 hekate 0.2 (unreleased):
 
   * Bump dht release to 0.15
+  * Fix segmentation faults when calling to curl
+  * Fix OpenSSL linking
 
 17 November 2010: hekate 0.1
 
