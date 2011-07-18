@@ -5,7 +5,7 @@ CDEBUGFLAGS=-O3 -Wall -Wno-uninitialized
 CLIBS+=`curl-config --libs`
 CFLAGS+= `curl-config --cflags` $(CDEBUGFLAGS) $(EXTRA_DEFINES)
 
-LDLIBS+=`curl-config --libs` -lssl -lm -pthread -lcpcfull
+LDLIBS+=`curl-config --libs` -lcrypto -lm -pthread -lcpcfull
 
 .SUFFIXES: .cpc .cpi
 
