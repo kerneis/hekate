@@ -151,6 +151,14 @@ connection(tr_list *t, int ipv6, char *event)
         rc = curl_easy_setopt(e_handle, CURLOPT_WRITEFUNCTION, writer);
         if(rc != CURLE_OK) goto curl_error;
 
+        /* Prevents mysterious segfaults.  Related to multithread and
+         * signals.
+         * Side-effects: timeouts will not occur while the name resolve
+         * takes place, and curl does not ignore SIPIPE anymore.  We
+         * don't use curl timeouts and already block SIGPIPE anyway. */
+        rc = curl_easy_setopt(e_handle, CURLOPT_NOSIGNAL, 1);
+        if(rc != CURLE_OK) goto curl_error;
+
         rc = curl_easy_perform(e_handle);
         if(rc != CURLE_OK) goto curl_error;
 
