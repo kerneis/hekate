@@ -49,7 +49,6 @@ int peer_port = 6969;
 
 #define BUF_LENGTH 2048
 #define DIR_LEN 512
-#define FD_MAX 1024
 
 cpc_condvar *choke_cond;
 
@@ -60,7 +59,7 @@ int maxunchoked = 50;
 int initial_credit = 1024 * 1024;
 int max_unchoked_time = 5 * 60;
 
-struct peer peers[FD_MAX];
+struct peer *peers;
 
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define MIN(x, y) ((x) >= (y) ? (y) : (x))
@@ -970,9 +969,15 @@ listening(hashtable * table)
     int rc, flags, one = 1, zero = 0;
     socklen_t cli_len;
     struct sockaddr_in6 serv_addr, cli_addr;
+    int fd_max;
 
-    memset(&peers, 0, sizeof(&peers));
-    maxpeers = MIN(maxunchoked * 10, FD_MAX - 10);
+    maxpeers = maxunchoked * 10;
+    fd_max = maxpeers + 10;
+    peers =  calloc(fd_max, sizeof(struct peer));
+    if(!peers) {
+        perror("(listening)calloc");
+        return;
+    }
 
     socket_fd = socket(AF_INET6, SOCK_STREAM, 0);
     if(socket_fd<0) {
@@ -1030,13 +1035,27 @@ listening(hashtable * table)
             continue;
         }
         debugf(2, "%3d accepted\n", client_fd);
-        assert(!peers[client_fd].t);
 
-        /* XXX */
-        if(client_fd > FD_MAX) {
-            debugf(1, "%3d beyond FD_MAX -- dropping\n", client_fd);
-            goto fail;
+        if(client_fd >= fd_max) {
+            struct peer *new_peers;
+            int new_fd_max = client_fd + 10;
+
+            debugf(2, "%3d beyond fd_max -- resizing\n", client_fd);
+            new_peers = realloc(peers, new_fd_max * sizeof(struct peer));
+
+            if(new_peers) {
+                memset(new_peers + fd_max, 0,
+                        (new_fd_max - fd_max) * sizeof(struct peer));
+                peers = new_peers;
+                fd_max = new_fd_max;
+            } else {
+                perror("realloc");
+                debugf(1, "%3d beyond fd_max -- dropping\n", client_fd);
+                goto fail;
+            }
         }
+
+        assert(!peers[client_fd].t);
 
         assert(numpeers >= 0 && numpeers <= maxpeers);
         if(numpeers >= maxpeers) {
