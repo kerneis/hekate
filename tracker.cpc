@@ -112,7 +112,6 @@ connection(tr_list *t, int ipv6, char *event)
     to_list *current = NULL;
     long http_code;
     int interval = -1;
-    cpc_sched *sched = cpc_get_sched();
 
     if(strncmp(t->url, "http://", 7) != 0) {
         fprintf(stderr, "(connection)bad tracker url: %s\n", t->url);
@@ -190,7 +189,7 @@ connection(tr_list *t, int ipv6, char *event)
         e_handle = curl_easy_init();
         if(!e_handle) goto fail;
     }
-    cpc_attach(sched);
+    cpc_attach();
     curl_easy_cleanup(e_handle);
 
     cpc_sleep(interval > 0 ? interval : 1800);
@@ -198,7 +197,7 @@ connection(tr_list *t, int ipv6, char *event)
     goto connection;
 
  fail:
-    cpc_attach(sched);
+    cpc_attach();
     fprintf(stderr, "Couldn't allocate CURL request.\n");
     cpc_sleep(interval > 0 ? interval : 1800);
     goto connection;
