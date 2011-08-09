@@ -1,0 +1,3 @@
+[submodule "dht"]
+	path = dht
+	url = git://github.com/jech/dht.git
