@@ -540,7 +540,7 @@ send_chunk(int fd, struct chunk *chunk)
 cps int
 handshake(hashtable *ht, int fd)
 {
-    int rc, numread, i;
+    int rc, i;
     const char *protocol = "\023BitTorrent protocol";
     char *res = NULL, id[41];
     struct torrent *torrent = NULL;
@@ -550,8 +550,8 @@ handshake(hashtable *ht, int fd)
        we get the info_hash, or risk a deadlock when the tracker performs
        its ``NAT check''.  No, I don't claim to understand it either. */
 
-    numread = cpc_buffer_read(fd, b, 48);
-    if(numread < 48) {
+    rc = cpc_buffer_read(fd, b, 48);
+    if(rc < 48) {
         perror("(handshake)cpc_partial_read");
         goto fail;
     }
@@ -597,12 +597,10 @@ handshake(hashtable *ht, int fd)
     if(rc < 0)
         goto fail;
 
-    if(numread < 68) {
-        /* Read the rest of the client handshake. */
-        rc = cpc_buffer_read(fd, b, 68 - numread);
-        if(rc < 68 - numread)
-            goto fail;
-    }
+    /* Read the rest of the client handshake. */
+    rc = cpc_buffer_read(fd, b, 68);
+    if(rc < 68)
+        goto fail;
 
     peers[fd].dht = !!(b->buf[1 + 19 + 7] & 1);
     peers[fd].ltep = !!(b->buf[1 + 19 + 5] & 0x10);
