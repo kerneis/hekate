@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <openssl/sha.h>
 
 #include "dht/dht.h"
+#pragma cpc_no_retain("dht_periodic")
 
 #include <cpc/cpc_runtime.h>
 #include <cpc/cpc_lib.h>
