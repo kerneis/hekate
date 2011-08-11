@@ -236,7 +236,7 @@ dht_announcer(int af)
 }
 
 /* Should this be malloced? */
-static char buf[1536];
+static char buf[1537];
 
 cps void
 dht_loop(int dht_socket, int dht6_socket)
@@ -280,11 +280,12 @@ dht_loop(int dht_socket, int dht6_socket)
             }
         }
 
-        if(rc > 0)
+        if(rc > 0) {
+            buf[rc] = '\0';
             rc = dht_periodic(buf, rc, &from, fromlen, &tosleep, NULL, NULL);
-        else
+        } else {
             rc = dht_periodic(NULL, 0, NULL, 0, &tosleep, NULL, NULL);
-
+        }
         if(rc < 0) {
             if(errno == EINTR) {
                 continue;
