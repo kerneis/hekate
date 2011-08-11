@@ -291,7 +291,7 @@ dht_loop(int dht_socket, int dht6_socket)
                 continue;
             } else {
                 perror("dht_periodic");
-                if(rc == EINVAL || rc == EFAULT)
+                if(errno == EINVAL || errno == EFAULT)
                     abort();
                 tosleep = 1;
             }
