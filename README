@@ -8,6 +8,23 @@ tens of thousands of simultaneously connected peers.
 Hekate is written in CPC, an experimental concurrent dialect of C. In order to
 build Hekate, you will need to install the CPC compiler first. 
 
+Checking out from repository
+****************************
+
+If you want to grab the latest development version:
+
+  git clone -b develop --recursive git://kerneis.info/hekate
+
+Note that you need the --recursive flag because of the dht submodule.
+In case you forget it, you can check out (and update) submodules with:
+
+  git submodule update --init
+
+There is also a github mirror:
+
+  git clone -b develop --recursive git://github.com/kerneis/hekate
+
+
 Installation
 ************
 
@@ -27,9 +44,12 @@ Known bugs and limitations
 
 - When listening() fails, trackers and dht continue to run whereas Hekate
   should leave.
-- Hekate uses memmap() for every file it serves, and never releases them.  This
+- Hekate uses mmap() for every file it serves, and never releases them.  This
   means you need enough virtual memory to hold all your files; this might be an
   issue if you run Hekate on a 32-bits architecture.
-- When compiling for exotic architectures (mips, etc.), some uncessary boxing
-  is performed.  This is a bug in CPC 0.1, which will be fixed in the next CPC
-  release (memcpy is not registered as a "no-retain" function).
+
+Do not hesitate to report other bugs to the hekate-users mailing list:
+
+  http://lists.sourceforge.net/lists/listinfo/hekate-users
+
+Gabriel Kerneis <kerneis@pps.jussieu.fr>
