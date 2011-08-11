@@ -72,7 +72,7 @@ send_message_2(int fd, int id,
     struct iovec iov[3];
     int i, rc;
 
-    debugf(4, "%3d -> type = %d, length = %d\n",
+    debugf(10, "%3d -> type = %d, length = %d\n",
            fd, id, bodylen1 + bodylen2 + 1);
 
     DO_HTONL(buf, bodylen1 + bodylen2 + 1);
@@ -117,7 +117,7 @@ send_message_h(int fd, char *head, int headlen,
     struct iovec iov[3];
     int i, rc;
 
-    debugf(4, "%3d -> h=%d, type = %d, length = %d\n",
+    debugf(10, "%3d -> h=%d, type = %d, length = %d\n",
            fd, headlen, id, bodylen + 1);
 
     DO_HTONL(buf, bodylen + 1);
@@ -789,7 +789,7 @@ stream_reader(int fd)
 
         type = b->buf[b->start];
 
-        debugf(4, "%3d <- type = %d, length = %d\n", fd, type, length);
+        debugf(10, "%3d <- type = %d, length = %d\n", fd, type, length);
 
         if(type != 5 && type != 20 && length > 20) {
             debugf(1, "%3d unbelievably long message!\n", fd);

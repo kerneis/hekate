@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "torrent.h"
 #include "server.h"
 #include "tracker.h"
+#include "util.h"
 
 char peer_id[21];
 int notracker = 0, nodht = 0;
@@ -243,6 +244,9 @@ cps void
 dht_loop(int dht_socket, int dht6_socket)
 {
     time_t tosleep = 0;
+
+    if(debug_level >= 5)
+        dht_debug = stderr;
 
     while(1) {
         int rc;

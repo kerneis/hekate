@@ -44,7 +44,7 @@ Specify the maximum time for which a peer can remain unchoked before it is
 considered for choking or dropping.  The default is 300 (5 minutes).
 .TP
 .BI \-d " level"
-Specify the debug level.  The default is 0.  A value of 4 will display
+Specify the debug level.  The default is 0.  A value of 10 will display
 every BitTorrent message sent or received.
 .TP
 .IR directory ...
