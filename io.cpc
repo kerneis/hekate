@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <sys/uio.h>
 #include <poll.h>
 #include <assert.h>
+#include <string.h>
 
 #include <cpc/cpc_runtime.h>
 #include <cpc/cpc_lib.h>
