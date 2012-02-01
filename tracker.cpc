@@ -245,8 +245,7 @@ dht_loop(int dht_socket, int dht6_socket)
 {
     time_t tosleep = 0;
 
-    if(debug_level >= 5)
-        dht_debug = stderr;
+    assert(dht_socket > 0 || dht6_socket > 0);
 
     while(1) {
         int rc;
@@ -267,21 +266,21 @@ dht_loop(int dht_socket, int dht6_socket)
         cpc_timeout_destroy(timeout);
 
         fromlen = sizeof(from);
-        rc = recvfrom(dht_socket, buf, 1536, 0,
-                      (struct sockaddr*)&from, &fromlen);
-        if(rc < 0 && errno != EAGAIN && errno != EINTR) {
-            perror("recvfrom(dht_socket)");
-            tosleep = 1;
-            continue;
-        }
-
-        if(rc < 0) {
-            rc = recvfrom(dht6_socket, buf, 1536, 0,
+        rc = -1;
+        if(dht_socket > 0) {
+            rc = recvfrom(dht_socket, buf, 1536, 0,
                           (struct sockaddr*)&from, &fromlen);
             if(rc < 0 && errno != EAGAIN && errno != EINTR) {
                 perror("recvfrom(dht_socket)");
-                tosleep = 1;
-                continue;
+            }
+        }
+
+        /* XXX IPv4 might starve IPv6 */
+        if(dht6_socket > 0 && rc < 0) {
+            rc = recvfrom(dht6_socket, buf, 1536, 0,
+                          (struct sockaddr*)&from, &fromlen);
+            if(rc < 0 && errno != EAGAIN && errno != EINTR) {
+                perror("recvfrom(dht6_socket)");
             }
         }
 
@@ -293,6 +292,8 @@ dht_loop(int dht_socket, int dht6_socket)
         }
         if(rc < 0) {
             if(errno == EINTR) {
+                /* XXX This never happens, but in case it did, what about
+                 * tosleep? */
                 continue;
             } else {
                 perror("dht_periodic");
@@ -346,7 +347,7 @@ init_trackers()
             dht_socket = socket(PF_INET, SOCK_DGRAM, 0);
             if(dht_socket < 0) {
                 perror("socket(dht)");
-                goto dht_done;
+                goto dht4_done;
             }
 
             memset(&sin, 0, sizeof(sin));
@@ -356,9 +357,12 @@ init_trackers()
             rc = bind(dht_socket, (struct sockaddr*)&sin, sizeof(sin));
             if(rc < 0) {
                 perror("bind(dht_socket)");
-                goto dht_fail;
+                close(dht_socket);
+                dht_socket = -1;
             }
         }
+
+    dht4_done:
 
         if(!noipv6)
             rc = find_global_address(AF_INET6, ipv6, &ipv6_len);
@@ -398,22 +402,24 @@ init_trackers()
 
     dht6_done:
 
-        if(getenv( "HK_DHT_VERBOSE") != NULL )
+        if(getenv("HK_DHT_VERBOSE") != NULL)
             dht_debug = stderr;
 
         rc = dht_init(dht_socket, dht6_socket, dht_id, v);
-        if(rc < 0)
-            goto dht_fail;
+        if(rc < 0) {
+            if(dht_socket > 0)
+                close(dht_socket);
+            if(dht6_socket > 0)
+                close(dht6_socket);
+            goto dht_done;
+        }
 
         cpc_spawn dht_loop(dht_socket, dht6_socket);
         if(dht_socket > 0)
             cpc_spawn dht_announcer(AF_INET);
         if(dht6_socket > 0)
             cpc_spawn dht_announcer(AF_INET6);
-        goto dht_done;
 
-    dht_fail:
-        close(dht_socket);
     dht_done:
         ;
     }
