@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <netdb.h>
 
 #include <cpc/cpc_runtime.h>
 #include <cpc/cpc_lib.h>
@@ -46,11 +47,13 @@ THE SOFTWARE.
 #include "io.h"
 
 int peer_port = 6969;
+char *peer_address = "::1";
 
 #define BUF_LENGTH 2048
 #define DIR_LEN 512
 
 cpc_condvar *choke_cond;
+cpc_condvar *close_cond;
 
 int numpeers = 0;
 int numunchoked = 0;
@@ -163,11 +166,7 @@ send_bitfield(int fd, struct torrent *t, char *head, int headlen)
         return -1;
     }
 
-    memset(buf, 0xFF, length - 1);
-    if(t->num_chunks % 8 == 0)
-        buf[length - 1] = 0xFF;
-    else
-        buf[length - 1] = (0xFF00 >> (t->num_chunks % 8)) & 0xFF;
+    memset(buf, 0, length);
 
     rc = send_message_h(fd, head, headlen, 5, buf, length);
     if(rc < 0) {
@@ -181,364 +180,38 @@ send_bitfield(int fd, struct torrent *t, char *head, int headlen)
 }
 
 cps int
-send_choke(int fd)
+send_interested(int fd)
 {
     int rc;
 
-    rc = send_message(fd, 0, NULL, 0);
+    rc = send_message(fd, 2, NULL, 0);
     if(rc < 0) {
-        perror("(send_choke)cpc_full_write");
+        perror("(send_interested)cpc_full_write");
         return -1;
     }
     return 0;
 }
 
 cps int
-send_unchoke(int fd)
+send_request(int fd, int index, int begin, int length)
 {
     int rc;
+    unsigned char buf[12];
 
-    rc = send_message(fd, 1, NULL, 0);
+    DO_HTONL(buf, index);
+    DO_HTONL(buf + 4, begin);
+    DO_HTONL(buf + 8, length);
+    rc = send_message(fd, 6, buf, 12);
     if(rc < 0) {
-        perror("(send_unchoke)cpc_full_write");
+        perror("(send_request)cpc_full_write");
         return -1;
     }
     return 0;
 }
 
-cps int
-send_dht_port(int fd, unsigned short port)
-{
-    int rc;
-    unsigned char buf[2];
-
-    DO_HTONS(buf, port);
-
-    rc = send_message(fd, 9, buf, 2);
-    if(rc < 0) {
-        perror("(send_dht_port)cpc_full_write");
-        return -1;
-    }
-    return 0;
-}
-
-cps int
-send_ltep_message(int fd, int id, char *body, int bodylen)
-{
-    char buf[1];
-    buf[0] = id;
-
-    return send_message_2(fd, 20, buf, 1, body, bodylen);
-}
-
-/* Return global IPv6, with caching.  Careful, this returns a pointer to
-   a static buffer. */
-static cps unsigned char *
-global_ipv6(void)
-{
-    static unsigned char ipv6[16];
-    static time_t ipv6_time = 0;
-    static int have_ipv6 = 0;
-    time_t now = time(NULL);
-
-    /* Re-check every half hour */
-    if(ipv6_time < now - 1800) {
-        int rc, addrlen;
-        addrlen = 16;
-        cpc_detached {
-            rc = find_global_address(AF_INET6, ipv6, &addrlen);
-        }
-        if(rc >= 0 && addrlen == 16)
-            have_ipv6 = 1;
-        else
-            have_ipv6 = 0;
-        ipv6_time = now;
-    }
-
-    if(have_ipv6)
-        return ipv6;
-    else
-        return NULL;
-}
-
-cps int
-send_ltep_handshake(int fd, unsigned short port)
-{
-    int rc;
-    unsigned char buf[100];
-    const char *hekate = "Hekate 0.0";
-    unsigned char *ipv6 = noipv6 ? NULL : global_ipv6();
-
-    rc = snprintf(buf, 100, "d%s1:pi%ue1:v%d:%se",
-                  ipv6 ? "4:ipv616:................" : "",
-                  port, (int)strlen(hekate), hekate);
-    if(rc < 0 || rc > 100)
-        return -1;
-
-    if(ipv6)
-        memcpy(buf + 10, ipv6, 16);
-
-    rc = send_ltep_message(fd, 0, buf, rc);
-    if(rc < 0) {
-        perror("(send_ltep_handshake)cpc_full_write");
-        return -1;
-    }
-    return 0;
-}
-
-void *
-map_file(struct torrent *t, int index)
-{
-    void *map;
-    int fd;
-
-    if(t->files[index]->map)
-        return 0;
-
-    fd = open(t->files[index]->path, O_RDONLY);
-    if(fd < 0)
-        return -1;
-
-    map = mmap(NULL, t->files[index]->length,
-               PROT_READ, MAP_PRIVATE, fd, 0);
-    if(map == MAP_FAILED) {
-        int save = errno;
-        close(fd);
-        errno = save;
-        return NULL;
-    }
-    t->files[index]->map = map;
-    close(fd);
-    return map;
-}
-
-int
-find_chunk(struct torrent *t, uint64_t begin, uint64_t length,
-           int *first_return, int *last_return,
-           uint64_t *offset_return, uint64_t *last_len_return)
-           __attribute__((cpc_no_retain))
-{
-    int i, first = -1, last = -1;
-    uint64_t offset, last_len;
-    struct file *f;
-
-    for(i = 0; i < t->num_files; i++) {
-        f = t->files[i];
-        if(f->offset <= begin) {
-            first = i;
-        }
-        if(f->offset + f->length >= begin + length) {
-            last = i;
-            break;
-        }
-    }
-
-    if(first < 0 || last < 0)
-        return -1;
-
-    assert(last >= first);
-    assert(begin >= t->files[first]->offset);
-    assert(begin + length <= t->files[last]->offset + t->files[last]->length);
-
-    offset = begin - t->files[first]->offset;
-    /* Chunk beyond last file */
-    if(offset > t->files[first]->length)
-        return -1;
-    if(first == last)
-        last_len = length;
-    else
-        last_len = begin + length - t->files[last]->offset;
-
-    if(first_return)
-        *first_return = first;
-    if(last_return)
-        *last_return = last;
-    if(offset_return)
-        *offset_return = offset;
-    if(last_len_return)
-        *last_len_return = last_len;
-
-    return 1;
-}
-
-cps int
-send_multi_chunk(int fd, struct chunk *chunk,
-                 int first, int last, uint64_t offset)
-{
-    unsigned char buf[8];
-    unsigned char *body;
-    int pos, i, len, rc;
-    struct torrent *t = peers[fd].t;
-
-    body = malloc(chunk->length);
-    if(!body) {
-        perror("(send_multi_chunk)malloc");
-        return -1;
-    }
-
-    pos = 0;
-    for(i = first; i <= last; i++) {
-        map_file(t, i);
-        if(t->files[i]->map == NULL) {
-            perror("map_file");
-            goto fail;
-        }
-        len = (i == first) ? (t->files[i]->length - offset) :
-            MIN(chunk->length - pos, t->files[i]->length);
-        memcpy(body + pos,
-               i == first ? t->files[i]->map + offset : t->files[i]->map,
-               len);
-        pos += len;
-    }
-
-    debugf(3, "%3d send chunk: length=%d, offset=%lld\n",
-           fd, chunk->length,
-           (long long int)chunk->offset*t->p_length + chunk->begin);
-
-    DO_HTONL(buf + 0, chunk->offset);
-    DO_HTONL(buf + 4, chunk->begin);
-
-    /* pos may be smaller than chunk->length, if the chunk extended beyond
-       the end of the torrent. */
-    rc = send_message_2(fd, 7, buf, 8, body, pos);
-    if(rc < 0) {
-        perror("(send_chunk)write");
-        goto fail;
-    }
-
-    debugf(3, "%3d sent chunk: length=%d, offset=%lld\n",
-           fd, chunk->length,
-           (long long int)chunk->offset*t->p_length + chunk->begin);
-
-    t->uploaded += chunk->length;
-    peers[fd].credit -= chunk->length;
-    assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
-
-    free(body);
-    return 0;
-
- fail:
-    free(body);
-    return -1;
-}
-
-cps int
-unchoke_peer(int fd)
-{
-    int rc;
-
-    assert(numunchoked <= numpeers);
-    assert(!peers[fd].unchoked);
-
-    debugf(2, "%3d unchoke\n", fd);
-    rc = send_unchoke(fd);
-    if(rc < 0)
-        return -1;
-    numunchoked++;
-    peers[fd].unchoked = 1;
-    peers[fd].credit = initial_credit;
-    peers[fd].unchoke_time = time(NULL);
-    return 1;
-}
-
-cps int
-choke_peer(int fd)
-{
-    int rc;
-
-    assert(numunchoked >= 1 && numunchoked <= numpeers);
-    assert(peers[fd].unchoked);
-
-    debugf(2, "%3d choke\n", fd);
-    rc = send_choke(fd);
-    if(rc < 0)
-        return -1;
-    free_chunks(fd);
-    numunchoked--;
-    peers[fd].unchoked = 0;
-    cpc_signal(choke_cond);
-    return 1;
-}
-
-cps int
-send_chunk(int fd, struct chunk *chunk)
-{
-    int file, i, rc;
-    unsigned char buf[8];
-    void *source;
-    struct torrent *t = peers[fd].t;
-    int first, last;
-    uint64_t offset;
-    struct file *f;
-
-    assert(peers[fd].unchoked && peers[fd].credit >= chunk->length);
-
-    rc = find_chunk(t, chunk->offset * t->p_length + chunk->begin,
-                    chunk->length, &first, &last, &offset, NULL);
-    if(rc < 0) {
-        debugf(1, "%3d couldn't find chunk\n", fd);
-        return -1;
-    }
-
-    if(first != last) {
-        /* For simplicity, we always use a native thread for data that
-           spans multiple files. */
-        cpc_detached {
-            return send_multi_chunk(fd, chunk, first, last, offset);
-        }
-    }
-
-    map_file(peers[fd].t, first);
-    if(peers[fd].t->files[first]->map == NULL) {
-        perror("map_file");
-        return -1;
-    }
-
-    source = peers[fd].t->files[first]->map + offset;
-
-    debugf(3, "%3d send chunk: length=%d, offset=%lld\n",
-           fd, chunk->length,
-           (long long int)chunk->offset*t->p_length + chunk->begin);
-
-    DO_HTONL(buf + 0, chunk->offset);
-    DO_HTONL(buf + 4, chunk->begin);
-
-    if(!incore(source, chunk->length)) {
-        /* Since we prefetch when we first get a request, this chunk should
-           arrive into core soon.  Yield in order to give it a chance. */
-        cpc_yield();
-        if(!incore(source, chunk->length)) {
-            /* Still not in core.  Use a native thread to avoid blocking. */
-            cpc_detached {
-                rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
-                if(rc < 0) {
-                    perror("(send_chunk)write");
-                    return -1;
-                }
-            }
-            goto done;
-        }
-    }
-
-    rc = send_message_2(fd, 7, buf, 8, source, chunk->length);
-    if(rc < 0) {
-        perror("(send_chunk)write");
-        return -1;
-    }
-
- done:
-    debugf(3, "%3d sent chunk: length=%d, offset=%lld\n",
-           fd, chunk->length,
-           (long long int)chunk->offset*t->p_length + chunk->begin);
-    t->uploaded += chunk->length;
-    peers[fd].credit -= chunk->length;
-    assert(peers[fd].credit >= 0 && peers[fd].credit < initial_credit);
-
-    return 0;
-}
 /* return -1 if sth wrong happend in handshake otherwise return 0 */
 cps int
-handshake(hashtable *ht, int fd)
+handshake(int fd)
 {
     int rc, i;
     const char *protocol = "\023BitTorrent protocol";
@@ -546,13 +219,35 @@ handshake(hashtable *ht, int fd)
     struct torrent *torrent = NULL;
     cpc_buffer *b = cpc_buffer_get(68);
 
-    /* The wikified spec implies that we must send our handshake as soon as
-       we get the info_hash, or risk a deadlock when the tracker performs
-       its ``NAT check''.  No, I don't claim to understand it either. */
+    torrent = peers[fd].t;
 
-    rc = cpc_buffer_read(fd, b, 48);
-    if(rc < 48) {
-        perror("(handshake)cpc_partial_read");
+    for(i = 0; i<20; i++)
+        snprintf(id + 2 * i, 3, "%.2x", torrent->info_hash[i]);
+
+    assert(torrent);
+
+    debugf(2, "%3d torrent requested: %s\n", fd, id);
+
+    peers[fd].credit = 0;
+
+    res = malloc(1 + 19 + 8 + 20 + 20);
+
+    strncpy(res, protocol, 20);
+
+    memset(res + 20, 0, 8);
+
+    memcpy(res + 28, torrent->info_hash, 20);
+    memcpy(res + 48, peer_id, 20);
+
+    rc = send_bitfield(fd, torrent, res, 68);
+    free(res);
+    if(rc < 0)
+        goto fail;
+
+    /* Read the rest of the client handshake. */
+    rc = cpc_buffer_read(fd, b, 68);
+    if(rc < 68) {
+        perror("(handshake)cpc_buffer_read");
         goto fail;
     }
 
@@ -565,45 +260,8 @@ handshake(hashtable *ht, int fd)
         goto fail;
     }
 
-    torrent = ht_get(ht, b->buf + 28);
-
-    for(i = 0; i<20; i++)
-        snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(b->buf + 28 + i));
-
-    if(!torrent) {
-        debugf(2, "%3d cannot find hash: %s\n", fd, id);
-        goto fail;
-    }
-
-    debugf(2, "%3d torrent requested: %s\n", fd, id);
-
-    peers[fd].t = torrent;
-    peers[fd].credit = 0;
-
-    res = malloc(1 + 19 + 8 + 20 + 20);
-
-    strncpy(res, protocol, 20);
-
-    memset(res + 20, 0, 8);
-    if(!nodht)
-        res[20 + 7] |= 1;
-    res[20 + 5] |= 0x10;
-
-    memcpy(res + 28, torrent->info_hash, 20);
-    memcpy(res + 48, peer_id, 20);
-
-    rc = send_bitfield(fd, torrent, res, 68);
-    free(res);
-    if(rc < 0)
-        goto fail;
-
-    /* Read the rest of the client handshake. */
-    rc = cpc_buffer_read(fd, b, 68);
-    if(rc < 68)
-        goto fail;
-
-    peers[fd].dht = !!(b->buf[1 + 19 + 7] & 1);
-    peers[fd].ltep = !!(b->buf[1 + 19 + 5] & 0x10);
+    peers[fd].dht = 0;
+    peers[fd].ltep = 0;
 
     for(i = 0; i < 20; i++) {
         unsigned char c = b->buf[48 + i];
@@ -622,134 +280,6 @@ fail:
     return -1;
 }
 
-cps void
-stream_writer(int fd)
-{
-    struct chunk *chunk;
-    int rc;
-
-    if(!nodht && peers[fd].dht) {
-        struct sockaddr_in6 sin6;
-        socklen_t salen = sizeof(sin6);
-        rc = getpeername(fd, (struct sockaddr*)&sin6, &salen);
-        if(rc < 0) {
-            perror("getpeername");
-        } else {
-            if(sin6.sin6_family == AF_INET6 &&
-               ((!noipv4 && IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)) ||
-                (!noipv6 && !IN6_IS_ADDR_V4MAPPED(&sin6.sin6_addr)))) {
-                rc = send_dht_port(fd, peer_port);
-                if(rc < 0)
-                    goto done;
-            }
-        }
-    }
-
-    if(peers[fd].ltep) {
-        rc = send_ltep_handshake(fd, peer_port);
-        if(rc < 0)
-            goto done;
-    }
-
-    while(1) {
-        assert(!peers[fd].unchoked);
-
-        while(numunchoked >= maxunchoked) {
-            if(peers[fd].dying)
-                goto done;
-            cpc_wait(choke_cond);
-        }
-
-        /* If the peer is a seed, it should have dropped the connection by
-           now, in which case the reader will have noticed. */
-        if(peers[fd].dying)
-            goto done;
-
-        if(numpeers >= maxpeers - 1) {
-            /* If our queue is full-ish, then this peer should have expressed
-               interest before it reached this point.  If it's empty-ish,
-               then we might as well unchoke it even though it's not interested,
-               just for kicks. */
-            if(!peers[fd].interested) {
-                debugf(2, "%3d dropping uninterested\n", fd);
-                goto done;
-            }
-        }
-
-        rc = unchoke_peer(fd);
-        if(rc < 0)
-            goto done;
-
-        while(1) {
-            assert(peers[fd].unchoked);
-
-            if(peers[fd].dying)
-                goto done;
-
-            if(!peers[fd].list)
-                cpc_sleep(30, 0, peers[fd].writer_cond);
-
-            if(!peers[fd].list)
-                /* Look, mate, you had your chance. */
-                goto done;
-
-            if(peers[fd].dying)
-                goto done;
-
-            chunk = peers[fd].list;
-
-            if(chunk->length > initial_credit) {
-                debugf(1, "%3d chunk larger than max credit!\n", fd);
-                goto done;
-            }
-
-            if(chunk->length > peers[fd].credit ||
-               (max_unchoked_time > 0 &&
-                peers[fd].unchoke_time + max_unchoked_time < time(NULL))) {
-                if(numpeers <= maxunchoked) {
-                    debugf(2, "%3d replenish\n", fd);
-                    peers[fd].credit = initial_credit;
-                } else {
-                    /* Choke even if we're going to drop,
-                       since we're not doing lingering close yet. */
-                    rc = choke_peer(fd);
-                    if(rc < 0)
-                        goto done;
-
-                    if(numpeers >= maxpeers) {
-                        debugf(2, "%3d dropping\n", fd);
-                        goto done;
-                    }
-
-                    /* Give other peers a chance to become unchoked. */
-                    cpc_yield();
-
-                    break;
-                }
-            }
-
-            assert(peers[fd].list == chunk);
-            peers[fd].list = peers[fd].list->next;
-            rc = send_chunk(fd, chunk);
-            free(chunk);
-            if(rc < 0)
-                goto done;
-            cpc_yield();
-        }
-    }
-
- done:
-    peers[fd].dying = 1;
-    shutdown(fd, 2);
-    cpc_signal_fd(fd, CPC_IO_IN);
-
-    /* If we failed to unchoke the peer above, then a slot is still vacant. */
-    if(numunchoked < maxunchoked)
-        cpc_signal(choke_cond);
-
-    cpc_barrier_await(peers[fd].barrier);
-}
-
 cps int
 stream_reader(int fd)
 {
@@ -757,6 +287,8 @@ stream_reader(int fd)
     cpc_buffer *b = cpc_buffer_get(BUF_LENGTH);
     uint32_t begin, index, chunk_len;
     int rc, type;
+
+    srand(1);
 
     while(1) {
         if(peers[fd].dying)
@@ -772,9 +304,11 @@ stream_reader(int fd)
         DO_NTOHL(length, b->buf + b->start);
         b->start += 4;
 
+        int save_length = 0;
+
         if(length > BUF_LENGTH) {
-            debugf(1, "%3d unbelievably long message (%d bytes)\n", fd, length);
-            goto fail;
+            save_length = length;
+            length = BUF_LENGTH - 4;
         }
 
         rc = cpc_buffer_read(fd, b, length);
@@ -789,98 +323,54 @@ stream_reader(int fd)
 
         type = b->buf[b->start];
 
-        debugf(10, "%3d <- type = %d, length = %d\n", fd, type, length);
+        if(save_length > 0) {
+          if(type != 7) {
+            debugf(3, "%3d message too long!\n", fd);
+            goto fail;
+          }
+          debugf(10, "%3d <- type = %d, length = %d\n", fd, type, save_length);
+        } else
+          debugf(10, "%3d <- type = %d, length = %d\n", fd, type, length);
 
-        if(type != 5 && type != 20 && length > 20) {
+        if(type != 5 && type != 20 && type != 7 && length > 20) {
             debugf(1, "%3d unbelievably long message!\n", fd);
             goto fail;
         }
 
         switch(type) {
-        case 0: case 1: case 4: case 5: case 9: case 20:
+        case 0:
+            peers[fd].unchoked = 0;
+            numunchoked--;
             break;
 
-        case 2:
-            debugf(3, "%3d interested\n", fd);
-            peers[fd].interested = 1;
+        case 1:
+            peers[fd].unchoked = 1;
+            send_request(fd, rand() % peers[fd].t->num_chunks,
+                rand() % ((peers[fd].t->p_length / 0x8000) * peers[fd].t->p_length),  0x8000);
+            numunchoked++;
             break;
 
-        case 3:
-            debugf(3, "%3d not interested\n", fd);
-            peers[fd].interested = 0;
-            goto fail;
-
-        case 6:
-        case 8:
-            if(length < 13) {
-                debugf(1, "%3d message too short\n");
-                goto fail;
-            }
-
-            /* There's a race condition in the protocol: if a request and
-               a choke cross each other, then the two peers will have
-               unsynchronised request lists.  Ignoring any requests when
-               the peer is choked mitigates the race somewhat, although it
-               can still happen if we send choke/unchoke in short
-               succession.  The peers will resynchronise at the next
-               choke.
-
-               The FAST extension solves the issue, but it's somewhat
-               overkill. */
-            if(!peers[fd].unchoked) {
-                debugf(2, "%3d %s in choked state\n",
-                       fd, type == 6 ? "request" : "cancel");
-                assert(peers[fd].list == NULL);
-                break;
-            }
-
-            DO_NTOHL(index, b->buf + b->start + 1);
-            DO_NTOHL(begin, b->buf + b->start + 5);
-            DO_NTOHL(chunk_len, b->buf + b->start + 9);
-            if(chunk_len == 0){
-                debugf(1, "%3d request length is zero\n", fd);
-                goto fail;
-            }
-            debugf(3, "%3d %s: index = %u\tbegin = %u\tlength = %u\n",
-                   fd, type == 6 ? "request" : "cancel",
-                   index, begin, chunk_len);
-            if(chunk_len > LARGE_CHUNK) {
-                debugf(1, "%3d unbelievably large chunk size requested\n");
-                goto fail;
-            }
-
-            if(type == 6) {
-                int rc, i, first, last;
-                uint64_t offset, last_len;
-                rc = find_chunk(peers[fd].t,
-                                index * peers[fd].t->p_length + begin,
-                                chunk_len,
-                                &first, &last, &offset, &last_len);
-                if(rc < 0) {
-                    debugf(1, "%3d find_chunk fail\n", fd);
-                    goto fail;
-                }
-                peers[fd].list = add_chunk(peers[fd].list,
-                                           index, begin, chunk_len);
-                for(i = first; i <= last; i++) {
-                    if(peers[fd].t->files[i]->map)
-                        prefetch(peers[fd].t->files[i]->map +
-                                 (i == first ? offset : 0),
-                                 i == last ?
-                                 last_len : peers[fd].t->files[i]->length -
-                                 (i == first ? offset : 0));
-                }
-                cpc_signal(peers[fd].writer_cond);
-            } else {
-                peers[fd].list = remove_chunk(peers[fd].list,
-                                              index, begin, chunk_len);
-            }
+        case 2: case 3: case 4: case 5: case 6: case 8: case 9: case 20:
             break;
 
         case 7:
-            debugf(1, "%3d unexpected piece message\n", fd);
-            goto fail;
-
+            debugf(3, "%3d got some piece!\n", fd);
+            if(save_length > 0) {
+                assert(length + 4 == BUF_LENGTH);
+                save_length -= length;
+                /* Read the rest of the piece */
+                while(save_length > 0) {
+                rc = cpc_buffer_read(fd, b, MIN(save_length, BUF_LENGTH));
+                if(rc < 0) {debugf(1, "%3d shit happens!\n", fd); goto fail;}
+                length = save_length;
+                save_length -= rc;
+                }
+                assert(b->start == 0);
+            }
+            send_request(fd, rand() % peers[fd].t->num_chunks,
+                rand() % (peers[fd].t->p_length / 0x8000) * peers[fd].t->p_length,  0x8000);
+             break;
+ 
         default:
             debugf(1, "%3d unexpected message\n", fd);
             goto fail;
@@ -912,39 +402,38 @@ free_chunks(int fd)
 }
 
 cps void
-client(hashtable *t, int client_fd)
+client(int client_fd)
 {
-    int rc = 0;
+    int rc = 0, error = 0, len = 0;
 
-    assert(peers[client_fd].t == NULL);
 
-    numpeers++;
-    peers[client_fd].writer_cond = cpc_condvar_get();
+    cpc_io_wait(client_fd, CPC_IO_IN | CPC_IO_OUT);
+    if(getsockopt(client_fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0 ||
+            error != 0) {
+        debugf(1, "%3d connect failed\n", client_fd);
+        goto done;
+    }
 
-    rc = handshake(t, client_fd);
+    rc = handshake(client_fd);
     if(rc < 0) {
         debugf(1, "%3d broken handshake -- dropping\n", client_fd);
         goto done;
     }
 
-    peers[client_fd].barrier = cpc_barrier_get(2);
+    rc = send_interested(client_fd);
 
-    cpc_spawn stream_writer(client_fd);
+    if(rc < 0) {
+        debugf(1, "%3d Come on, I *was* interested!\n", client_fd);
+        goto done;
+    }
 
     rc = stream_reader(client_fd);
-
-    peers[client_fd].dying = 1;
-    shutdown(client_fd, 2);
-    cpc_signal_fd(client_fd, CPC_IO_OUT);
-    cpc_signal(peers[client_fd].writer_cond);
-    cpc_barrier_await(peers[client_fd].barrier);
 
  done:
     debugf(1, "%3d closing\n", client_fd);
     free_chunks(client_fd);
     peers[client_fd].t = NULL;
 
-    cpc_condvar_release(peers[client_fd].writer_cond);
 
     if(peers[client_fd].unchoked) {
         numunchoked--;
@@ -957,19 +446,20 @@ client(hashtable *t, int client_fd)
     memset(&peers[client_fd], 0, sizeof(struct peer));
 
     close(client_fd);
+
+    cpc_signal(close_cond);
     return;
 }
 
 cps void
-listening(hashtable * table)
+connecting(hashtable * table)
 {
-    int socket_fd, client_fd;
-    int rc, flags, one = 1, zero = 0;
-    socklen_t cli_len;
-    struct sockaddr_in6 serv_addr, cli_addr;
+    struct sockaddr_in6 sin6;
+    struct torrent *torrent = table->table[0]; /* XXX use only the first torrent */
+    int client_fd, i=0, flags;
     int fd_max;
 
-    maxpeers = maxunchoked * 10;
+    maxpeers = maxunchoked;
     fd_max = maxpeers + 10;
     peers =  calloc(fd_max, sizeof(struct peer));
     if(!peers) {
@@ -977,114 +467,53 @@ listening(hashtable * table)
         return;
     }
 
-    socket_fd = socket(AF_INET6, SOCK_STREAM, 0);
-    if(socket_fd<0) {
-        perror("(listening)socket");
-        return;
-    }
-
-    rc = setsockopt(socket_fd, IPPROTO_IPV6, IPV6_V6ONLY, &zero, sizeof(zero));
-    if(rc) {
-        perror("(listening)setsockopt(IPV6_V6ONLY)");
-        return;
-    }
-
-    rc = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    if(rc) {
-        perror("(listening)setsockopt");
-        return;
-    }
-
-    flags = fcntl(socket_fd, F_GETFL);
-    rc = fcntl(socket_fd, F_SETFL, flags|O_NONBLOCK);
-    if(rc < 0) {
-        perror("F_SETFL");
-        return;
-    }
-
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin6_family = AF_INET6;
-    serv_addr.sin6_port = htons(peer_port);
-
-    if (bind(socket_fd, (struct sockaddr *) &serv_addr,
-             sizeof(serv_addr)) < 0)
-        perror("(listening)bind");
-
-    rc = listen(socket_fd, 20);
-    if(rc < 0) {
-        perror("(listening)listen");
-        return;
-    }
-
     choke_cond = cpc_condvar_get();
+    close_cond = cpc_condvar_get();
 
     while(1) {
-        cpc_io_wait(socket_fd, CPC_IO_IN);
-
-        cli_len = sizeof(cli_addr);
-        client_fd = accept(socket_fd,
-                           (struct sockaddr *)&cli_addr,
-                           &cli_len);
-        if(client_fd<0) {
-            if(errno != EAGAIN && errno != EINTR) {
-                perror("(listening)accept");
-                cpc_sleep(1);
-            }
-            continue;
-        }
-        debugf(2, "%3d accepted\n", client_fd);
-
-        if(client_fd >= fd_max) {
-            struct peer *new_peers;
-            int new_fd_max = client_fd + 10;
-
-            debugf(2, "%3d beyond fd_max -- resizing\n", client_fd);
-            new_peers = realloc(peers, new_fd_max * sizeof(struct peer));
-
-            if(new_peers) {
-                memset(new_peers + fd_max, 0,
-                        (new_fd_max - fd_max) * sizeof(struct peer));
-                peers = new_peers;
-                fd_max = new_fd_max;
-            } else {
-                perror("realloc");
-                debugf(1, "%3d beyond fd_max -- dropping\n", client_fd);
-                goto fail;
-            }
+        while(numpeers >= maxpeers)
+            cpc_wait(close_cond);
+        torrent = torrent == NULL ? NULL : torrent->next;
+        while(!torrent) {
+            i = (i+1) % table->size;
+            torrent = table->table[i];
         }
 
-        assert(!peers[client_fd].t);
+        client_fd = socket(AF_INET6, SOCK_STREAM, SOCK_NONBLOCK);
 
-        assert(numpeers >= 0 && numpeers <= maxpeers);
-        if(numpeers >= maxpeers) {
-            debugf(1, "%3d dropping early\n", client_fd);
-            goto fail;
-        }
-
+#if 0
         flags = fcntl(client_fd, F_GETFL);
         if(flags < 0) {
             perror("F_GETFL");
-            goto fail;
+            close(client_fd);
+            continue;
         }
 
+      { int rc;
         rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
         if(rc < 0) {
             perror("F_SETFL");
-            goto fail;
+            close(client_fd);
+            continue;
         }
+      }
+#endif
 
-        rc = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
-        if(rc) {
-            perror("setsockopt");
-            goto fail;
-        }
+        memset(&sin6, 0, sizeof(sin6));
+        sin6.sin6_family = AF_INET6;
+        sin6.sin6_port = htons(peer_port);
+        inet_pton(AF_INET6, peer_address, &sin6.sin6_addr);
 
-        cpc_spawn client(table, client_fd);
-        continue;
-
-    fail:
-        close(client_fd);
-        continue;
+        if(connect(client_fd, (struct sockaddr *)&sin6, sizeof(sin6)) < 0 &&
+                errno != EINPROGRESS) {
+            perror("connect");
+            close(client_fd);
+            continue;
+         }
+        numpeers++;
+        assert(!peers[client_fd].t);
+        peers[client_fd].t = torrent;
+        cpc_spawn client(client_fd);
     }
 
     return;
