@@ -45,6 +45,6 @@ typedef struct peer {
     struct chunk *list;
 } peer;
 
-cps void listening(hashtable * table);
+cps void connecting(hashtable * table);
 
 #endif
