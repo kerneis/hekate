@@ -72,6 +72,10 @@ cpc_buffer_read(int fd, cpc_buffer *b, int len)
     /* No need to read more data */
     if(pos >= len)
         return pos;
+    else if(len > b->size) {
+        errno = ENOMEM;
+        return -1;
+    }
 
     cpc_timeout *t = cpc_timeout_get(io_timeout, 0);
     cpc_condvar *c = cpc_timeout_condvar(t);
