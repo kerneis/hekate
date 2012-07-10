@@ -51,6 +51,7 @@ THE SOFTWARE.
 
 static cpc_condvar *choke_cond;
 
+static int fd_max;
 static int numpeers = 0;
 static int numunchoked = 0;
 static int maxpeers;
@@ -60,6 +61,38 @@ int initial_credit = 1024 * 1024;
 int max_unchoked_time = 5 * 60;
 
 struct peer *peers;
+
+static int add_peer(int sock)
+{
+    if(sock >= fd_max) {
+        struct peer *new_peers;
+        int new_fd_max = sock + 10;
+
+        debugf(2, "%3d beyond fd_max -- resizing\n", sock);
+        new_peers = realloc(peers, new_fd_max * sizeof(struct peer));
+        if(new_peers == NULL) {
+            perror("realloc");
+            debugf(1, "%3d beyond fd_max -- dropping\n", sock);
+            return -1;
+        }
+        memset(new_peers + fd_max, 0,
+               (new_fd_max - fd_max) * sizeof(struct peer));
+        peers = new_peers;
+        fd_max = new_fd_max;
+    }
+    numpeers++;
+    return 0;
+}
+
+static int
+remove_peer(int sock)
+{
+    numpeers--;
+    memset(&peers[sock], 0, sizeof(struct peer));
+    return 0;
+}
+
+#define GET_PEER(sock) (&peers[sock])
 
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define MIN(x, y) ((x) >= (y) ? (y) : (x))
@@ -368,7 +401,7 @@ send_multi_chunk(int sock, struct chunk *chunk,
     unsigned char buf[8];
     unsigned char *body;
     int pos, i, len, rc;
-    struct torrent *t = peers[sock].t;
+    struct torrent *t = GET_PEER(sock)->t;
 
     body = malloc(chunk->length);
     if(!body) {
@@ -411,8 +444,8 @@ send_multi_chunk(int sock, struct chunk *chunk,
            (long long int)chunk->offset*t->p_length + chunk->begin);
 
     t->uploaded += chunk->length;
-    peers[sock].credit -= chunk->length;
-    assert(peers[sock].credit >= 0 && peers[sock].credit < initial_credit);
+    GET_PEER(sock)->credit -= chunk->length;
+    assert(GET_PEER(sock)->credit >= 0 && GET_PEER(sock)->credit < initial_credit);
 
     free(body);
     return 0;
@@ -428,16 +461,16 @@ unchoke_peer(int sock)
     int rc;
 
     assert(numunchoked <= numpeers);
-    assert(!peers[sock].unchoked);
+    assert(!GET_PEER(sock)->unchoked);
 
     debugf(2, "%3d unchoke\n", sock);
     rc = send_unchoke(sock);
     if(rc < 0)
         return -1;
     numunchoked++;
-    peers[sock].unchoked = 1;
-    peers[sock].credit = initial_credit;
-    peers[sock].unchoke_time = time(NULL);
+    GET_PEER(sock)->unchoked = 1;
+    GET_PEER(sock)->credit = initial_credit;
+    GET_PEER(sock)->unchoke_time = time(NULL);
     return 1;
 }
 
@@ -447,7 +480,7 @@ choke_peer(int sock)
     int rc;
 
     assert(numunchoked >= 1 && numunchoked <= numpeers);
-    assert(peers[sock].unchoked);
+    assert(GET_PEER(sock)->unchoked);
 
     debugf(2, "%3d choke\n", sock);
     rc = send_choke(sock);
@@ -455,7 +488,7 @@ choke_peer(int sock)
         return -1;
     free_chunks(sock);
     numunchoked--;
-    peers[sock].unchoked = 0;
+    GET_PEER(sock)->unchoked = 0;
     cpc_signal(choke_cond);
     return 1;
 }
@@ -466,12 +499,12 @@ send_chunk(int sock, struct chunk *chunk)
     int file, i, rc;
     unsigned char buf[8];
     void *source;
-    struct torrent *t = peers[sock].t;
+    struct torrent *t = GET_PEER(sock)->t;
     int first, last;
     uint64_t offset;
     struct file *f;
 
-    assert(peers[sock].unchoked && peers[sock].credit >= chunk->length);
+    assert(GET_PEER(sock)->unchoked && GET_PEER(sock)->credit >= chunk->length);
 
     rc = find_chunk(t, chunk->offset * t->p_length + chunk->begin,
                     chunk->length, &first, &last, &offset, NULL);
@@ -488,13 +521,13 @@ send_chunk(int sock, struct chunk *chunk)
         }
     }
 
-    map_file(peers[sock].t, first);
-    if(peers[sock].t->files[first]->map == NULL) {
+    map_file(GET_PEER(sock)->t, first);
+    if(GET_PEER(sock)->t->files[first]->map == NULL) {
         perror("map_file");
         return -1;
     }
 
-    source = peers[sock].t->files[first]->map + offset;
+    source = GET_PEER(sock)->t->files[first]->map + offset;
 
     debugf(3, "%3d send chunk: length=%d, offset=%lld\n",
            sock, chunk->length,
@@ -531,8 +564,8 @@ send_chunk(int sock, struct chunk *chunk)
            sock, chunk->length,
            (long long int)chunk->offset*t->p_length + chunk->begin);
     t->uploaded += chunk->length;
-    peers[sock].credit -= chunk->length;
-    assert(peers[sock].credit >= 0 && peers[sock].credit < initial_credit);
+    GET_PEER(sock)->credit -= chunk->length;
+    assert(GET_PEER(sock)->credit >= 0 && GET_PEER(sock)->credit < initial_credit);
 
     return 0;
 }
@@ -577,8 +610,8 @@ handshake(hashtable *ht, int sock)
 
     debugf(2, "%3d torrent requested: %s\n", sock, id);
 
-    peers[sock].t = torrent;
-    peers[sock].credit = 0;
+    GET_PEER(sock)->t = torrent;
+    GET_PEER(sock)->credit = 0;
 
     res = malloc(1 + 19 + 8 + 20 + 20);
 
@@ -602,8 +635,8 @@ handshake(hashtable *ht, int sock)
     if(rc < 68)
         goto fail;
 
-    peers[sock].dht = !!(b->buf[1 + 19 + 7] & 1);
-    peers[sock].ltep = !!(b->buf[1 + 19 + 5] & 0x10);
+    GET_PEER(sock)->dht = !!(b->buf[1 + 19 + 7] & 1);
+    GET_PEER(sock)->ltep = !!(b->buf[1 + 19 + 5] & 0x10);
 
     for(i = 0; i < 20; i++) {
         unsigned char c = b->buf[48 + i];
@@ -611,8 +644,8 @@ handshake(hashtable *ht, int sock)
     }
     debugf(2, "%3d peer-id %s %s%s\n",
            sock, id,
-           peers[sock].dht ? " (DHT)" : "",
-           peers[sock].ltep ? " (LTEP)" : "");
+           GET_PEER(sock)->dht ? " (DHT)" : "",
+           GET_PEER(sock)->ltep ? " (LTEP)" : "");
 
     cpc_buffer_destroy(b);
     return 0;
@@ -628,7 +661,7 @@ stream_writer(int sock)
     struct chunk *chunk;
     int rc;
 
-    if(!nodht && peers[sock].dht) {
+    if(!nodht && GET_PEER(sock)->dht) {
         struct sockaddr_in6 sin6;
         socklen_t salen = sizeof(sin6);
         rc = getpeername(sock, (struct sockaddr*)&sin6, &salen);
@@ -645,24 +678,24 @@ stream_writer(int sock)
         }
     }
 
-    if(peers[sock].ltep) {
+    if(GET_PEER(sock)->ltep) {
         rc = send_ltep_handshake(sock, peer_port);
         if(rc < 0)
             goto done;
     }
 
     while(1) {
-        assert(!peers[sock].unchoked);
+        assert(!GET_PEER(sock)->unchoked);
 
         while(numunchoked >= maxunchoked) {
-            if(peers[sock].dying)
+            if(GET_PEER(sock)->dying)
                 goto done;
             cpc_wait(choke_cond);
         }
 
         /* If the peer is a seed, it should have dropped the connection by
            now, in which case the reader will have noticed. */
-        if(peers[sock].dying)
+        if(GET_PEER(sock)->dying)
             goto done;
 
         if(numpeers >= maxpeers - 1) {
@@ -670,7 +703,7 @@ stream_writer(int sock)
                interest before it reached this point.  If it's empty-ish,
                then we might as well unchoke it even though it's not interested,
                just for kicks. */
-            if(!peers[sock].interested) {
+            if(!GET_PEER(sock)->interested) {
                 debugf(2, "%3d dropping uninterested\n", sock);
                 goto done;
             }
@@ -681,34 +714,34 @@ stream_writer(int sock)
             goto done;
 
         while(1) {
-            assert(peers[sock].unchoked);
+            assert(GET_PEER(sock)->unchoked);
 
-            if(peers[sock].dying)
+            if(GET_PEER(sock)->dying)
                 goto done;
 
-            if(!peers[sock].list)
-                cpc_sleep(30, 0, peers[sock].writer_cond);
+            if(!GET_PEER(sock)->list)
+                cpc_sleep(30, 0, GET_PEER(sock)->writer_cond);
 
-            if(!peers[sock].list)
+            if(!GET_PEER(sock)->list)
                 /* Look, mate, you had your chance. */
                 goto done;
 
-            if(peers[sock].dying)
+            if(GET_PEER(sock)->dying)
                 goto done;
 
-            chunk = peers[sock].list;
+            chunk = GET_PEER(sock)->list;
 
             if(chunk->length > initial_credit) {
                 debugf(1, "%3d chunk larger than max credit!\n", sock);
                 goto done;
             }
 
-            if(chunk->length > peers[sock].credit ||
+            if(chunk->length > GET_PEER(sock)->credit ||
                (max_unchoked_time > 0 &&
-                peers[sock].unchoke_time + max_unchoked_time < time(NULL))) {
+                GET_PEER(sock)->unchoke_time + max_unchoked_time < time(NULL))) {
                 if(numpeers <= maxunchoked) {
                     debugf(2, "%3d replenish\n", sock);
-                    peers[sock].credit = initial_credit;
+                    GET_PEER(sock)->credit = initial_credit;
                 } else {
                     /* Choke even if we're going to drop,
                        since we're not doing lingering close yet. */
@@ -728,8 +761,8 @@ stream_writer(int sock)
                 }
             }
 
-            assert(peers[sock].list == chunk);
-            peers[sock].list = peers[sock].list->next;
+            assert(GET_PEER(sock)->list == chunk);
+            GET_PEER(sock)->list = GET_PEER(sock)->list->next;
             rc = send_chunk(sock, chunk);
             free(chunk);
             if(rc < 0)
@@ -739,7 +772,7 @@ stream_writer(int sock)
     }
 
  done:
-    peers[sock].dying = 1;
+    GET_PEER(sock)->dying = 1;
     shutdown(sock, 2);
     cpc_signal_fd(sock, CPC_IO_IN);
 
@@ -747,7 +780,7 @@ stream_writer(int sock)
     if(numunchoked < maxunchoked)
         cpc_signal(choke_cond);
 
-    cpc_barrier_await(peers[sock].barrier);
+    cpc_barrier_await(GET_PEER(sock)->barrier);
 }
 
 static cps int
@@ -759,7 +792,7 @@ stream_reader(int sock)
     int rc, type;
 
     while(1) {
-        if(peers[sock].dying)
+        if(GET_PEER(sock)->dying)
             goto fail;
 
 
@@ -803,12 +836,12 @@ stream_reader(int sock)
 
         case 2:
             debugf(3, "%3d interested\n", sock);
-            peers[sock].interested = 1;
+            GET_PEER(sock)->interested = 1;
             break;
 
         case 3:
             debugf(3, "%3d not interested\n", sock);
-            peers[sock].interested = 0;
+            GET_PEER(sock)->interested = 0;
             goto fail;
 
         case 6:
@@ -828,10 +861,10 @@ stream_reader(int sock)
 
                The FAST extension solves the issue, but it's somewhat
                overkill. */
-            if(!peers[sock].unchoked) {
+            if(!GET_PEER(sock)->unchoked) {
                 debugf(2, "%3d %s in choked state\n",
                        sock, type == 6 ? "request" : "cancel");
-                assert(peers[sock].list == NULL);
+                assert(GET_PEER(sock)->list == NULL);
                 break;
             }
 
@@ -853,27 +886,27 @@ stream_reader(int sock)
             if(type == 6) {
                 int rc, i, first, last;
                 uint64_t offset, last_len;
-                rc = find_chunk(peers[sock].t,
-                                index * peers[sock].t->p_length + begin,
+                rc = find_chunk(GET_PEER(sock)->t,
+                                index * GET_PEER(sock)->t->p_length + begin,
                                 chunk_len,
                                 &first, &last, &offset, &last_len);
                 if(rc < 0) {
                     debugf(1, "%3d find_chunk fail\n", sock);
                     goto fail;
                 }
-                peers[sock].list = add_chunk(peers[sock].list,
+                GET_PEER(sock)->list = add_chunk(GET_PEER(sock)->list,
                                            index, begin, chunk_len);
                 for(i = first; i <= last; i++) {
-                    if(peers[sock].t->files[i]->map)
-                        prefetch(peers[sock].t->files[i]->map +
+                    if(GET_PEER(sock)->t->files[i]->map)
+                        prefetch(GET_PEER(sock)->t->files[i]->map +
                                  (i == first ? offset : 0),
                                  i == last ?
-                                 last_len : peers[sock].t->files[i]->length -
+                                 last_len : GET_PEER(sock)->t->files[i]->length -
                                  (i == first ? offset : 0));
                 }
-                cpc_signal(peers[sock].writer_cond);
+                cpc_signal(GET_PEER(sock)->writer_cond);
             } else {
-                peers[sock].list = remove_chunk(peers[sock].list,
+                GET_PEER(sock)->list = remove_chunk(GET_PEER(sock)->list,
                                               index, begin, chunk_len);
             }
             break;
@@ -907,8 +940,8 @@ free_chunk_list(struct chunk* c)
 static void
 free_chunks(int sock)
 {
-    free_chunk_list(peers[sock].list);
-    peers[sock].list = NULL;
+    free_chunk_list(GET_PEER(sock)->list);
+    GET_PEER(sock)->list = NULL;
     return ;
 }
 
@@ -917,10 +950,9 @@ client(hashtable *t, int client_sock)
 {
     int rc = 0;
 
-    assert(peers[client_sock].t == NULL);
+    assert(GET_PEER(client_sock)->t == NULL);
 
-    numpeers++;
-    peers[client_sock].writer_cond = cpc_condvar_get();
+    GET_PEER(client_sock)->writer_cond = cpc_condvar_get();
 
     rc = handshake(t, client_sock);
     if(rc < 0) {
@@ -928,34 +960,32 @@ client(hashtable *t, int client_sock)
         goto done;
     }
 
-    peers[client_sock].barrier = cpc_barrier_get(2);
+    GET_PEER(client_sock)->barrier = cpc_barrier_get(2);
 
     cpc_spawn stream_writer(client_sock);
 
     rc = stream_reader(client_sock);
 
-    peers[client_sock].dying = 1;
+    GET_PEER(client_sock)->dying = 1;
     shutdown(client_sock, 2);
     cpc_signal_fd(client_sock, CPC_IO_OUT);
-    cpc_signal(peers[client_sock].writer_cond);
-    cpc_barrier_await(peers[client_sock].barrier);
+    cpc_signal(GET_PEER(client_sock)->writer_cond);
+    cpc_barrier_await(GET_PEER(client_sock)->barrier);
 
  done:
     debugf(1, "%3d closing\n", client_sock);
     free_chunks(client_sock);
-    peers[client_sock].t = NULL;
+    GET_PEER(client_sock)->t = NULL;
 
-    cpc_condvar_release(peers[client_sock].writer_cond);
+    cpc_condvar_release(GET_PEER(client_sock)->writer_cond);
 
-    if(peers[client_sock].unchoked) {
+    if(GET_PEER(client_sock)->unchoked) {
         numunchoked--;
         cpc_signal(choke_cond);
     }
 
     assert(numpeers >= 1);
-    numpeers--;
-
-    memset(&peers[client_sock], 0, sizeof(struct peer));
+    remove_peer(client_sock);
 
     close(client_sock);
     return;
@@ -968,7 +998,6 @@ listening(hashtable * table)
     int rc, flags, one = 1, zero = 0;
     socklen_t cli_len;
     struct sockaddr_in6 serv_addr, cli_addr;
-    int fd_max;
 
     maxpeers = maxunchoked * 10;
     fd_max = maxpeers + 10;
@@ -1061,24 +1090,9 @@ listening(hashtable * table)
             goto fail;
         }
 
-        if(client_sock >= fd_max) {
-            struct peer *new_peers;
-            int new_fd_max = client_sock + 10;
-
-            debugf(2, "%3d beyond fd_max -- resizing\n", client_sock);
-            new_peers = realloc(peers, new_fd_max * sizeof(struct peer));
-
-            if(new_peers) {
-                memset(new_peers + fd_max, 0,
-                        (new_fd_max - fd_max) * sizeof(struct peer));
-                peers = new_peers;
-                fd_max = new_fd_max;
-            } else {
-                perror("realloc");
-                debugf(1, "%3d beyond fd_max -- dropping\n", client_sock);
-                goto fail;
-            }
-        }
+        rc = add_peer(client_sock);
+        if(rc < 0)
+            goto fail;
         cpc_spawn client(table, client_sock);
         continue;
 
