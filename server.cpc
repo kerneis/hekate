@@ -416,11 +416,13 @@ send_multi_chunk(int sock, struct chunk *chunk,
             perror("map_file");
             goto fail;
         }
-        len = (i == first) ? (t->files[i]->length - offset) :
-            MIN(chunk->length - pos, t->files[i]->length);
-        memcpy(body + pos,
-               i == first ? t->files[i]->map + offset : t->files[i]->map,
-               len);
+        if(i == first) {
+            len = t->files[i]->length - offset;
+            memcpy(body + pos, t->files[i]->map + offset, len);
+        } else {
+            len = MIN(chunk->length - pos, t->files[i]->length);
+            memcpy(body + pos, t->files[i]->map, len);
+        }
         pos += len;
     }
 
