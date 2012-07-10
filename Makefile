@@ -1,17 +1,25 @@
-CPC=cpc.asm.exe
+CPC_FOLDER  = ../cpc
+CPC         = $(CPC_FOLDER)/bin/cpc.asm.exe
+CPC_INCLUDE = -I $(CPC_FOLDER)/include
+CPC_LIB     = -L $(CPC_FOLDER)/runtime
 
 CDEBUGFLAGS=-O2 -Wall -Wno-uninitialized -g
 
 CLIBS+=`curl-config --libs`
-CFLAGS+= `curl-config --cflags` $(CDEBUGFLAGS) $(EXTRA_DEFINES)
+CFLAGS+= `curl-config --cflags`
+CLIBS += $(OPENSSL_LIB) \
+         $(CPC_LIB)
+CFLAGS += $(OPENSSL_INCLUDE) \
+          $(CPC_INCLUDE) $(CDEBUGFLAGS) $(EXTRA_DEFINES)
 
-LDLIBS+=`curl-config --libs` -lcrypto -pthread -lcpcfull -lm
+LDLIBS += $(CLIBS) -lcpcfull -lm -lcrypto
 
 .SUFFIXES: .cpc .cpi
 
 .PHONY: all clean
 
-hekate: util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o hekate.o dht/dht.o
+hekate: util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o \
+        hekate.o dht/dht.o
 
 all: hekate
 
