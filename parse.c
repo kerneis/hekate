@@ -38,7 +38,7 @@ THE SOFTWARE.
 #include "parse.h"
 #include "hashtable.h"
 
-benc *
+static benc *
 make_benc(benc_type type)
 {
     benc *r;
@@ -58,7 +58,7 @@ make_benc(benc_type type)
     return r;
 }
 
-inline void
+static inline void
 add_set (benc *b, benc *obj)
 {
     assert(b->type == LIST || b->type == DICT);
@@ -100,14 +100,14 @@ close_buffer(buffer *b)
     free(b);
 }
 
-inline void
+static inline void
 start_hashing(buffer *b)
 {
     SHA1_Init(&b->sha1);
     b->hashing = 1;
 }
 
-inline void
+static inline void
 stop_hashing(buffer *b, unsigned char *result)
 {
     SHA1_Final(result, &b->sha1);
@@ -115,7 +115,7 @@ stop_hashing(buffer *b, unsigned char *result)
 }
 
 /* shall we return an int to allow error codes? */
-/*cps*/ char
+/*cps*/ static char
 get_byte(buffer *b)
 {
     int rc=0, i = 0;
@@ -150,7 +150,7 @@ get_byte(buffer *b)
 
 #define eof_buffer( b ) (b->cur == b->eof)
 
-/*cps*/ char *
+/*cps*/ static char *
 get_string(buffer *b, int64_t n)
 {
     int64_t i;
@@ -167,7 +167,7 @@ get_string(buffer *b, int64_t n)
     return s;
 }
 
-/*cps*/ int64_t
+/*cps*/ static int64_t
 parse_int(buffer *b, char c, char end)
 {
     int64_t r = 0;
@@ -188,7 +188,7 @@ parse_int(buffer *b, char c, char end)
     return (negative ? -r : r);
 }
 
-/*cps*/ void
+/*cps*/ static void
 parse_list (buffer *b, benc *r)
 {
     benc *tmp;
@@ -198,7 +198,7 @@ parse_list (buffer *b, benc *r)
     r->size = r->set.used;
 }
 
-/*cps*/ void
+/*cps*/ static void
 parse_dict (buffer *b, benc *r)
 {
     benc *key, *value;

@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "hashtable.h"
 #include "torrent.h"
 
-uint32_t
+static uint32_t
 hash(unsigned char *key, int ht_size)
 {
     uint32_t *seed = (uint32_t *)key;

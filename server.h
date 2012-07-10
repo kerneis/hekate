@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include <cpc/cpc_lib.h>
 
 extern int peer_port;
-extern int maxpeers, maxunchoked;
+extern int maxunchoked;
 extern int initial_credit;
 extern int max_unchoked_time;
 

@@ -33,7 +33,7 @@ THE SOFTWARE.
 #include "parse.h"
 #include "torrent.h"
 
-int
+static int
 concat_path(struct file *f, char *curr_path, benc *l)
 {
     int i, pos, size;
@@ -105,7 +105,7 @@ free_torrent(struct torrent *t)
     free(t);
 }
 
-int
+static int
 parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, j, k, rc;
@@ -167,7 +167,7 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 }
 
 
-int
+static int
 parse_info(struct torrent *elmt, char *curr_path, benc *raw)
 {
     int i, rc, path_length;

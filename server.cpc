@@ -50,11 +50,11 @@ int peer_port = 6969;
 #define BUF_LENGTH 2048
 #define DIR_LEN 512
 
-cpc_condvar *choke_cond;
+static cpc_condvar *choke_cond;
 
-int numpeers = 0;
-int numunchoked = 0;
-int maxpeers;
+static int numpeers = 0;
+static int numunchoked = 0;
+static int maxpeers;
 int maxunchoked = 50;
 int initial_credit = 1024 * 1024;
 int max_unchoked_time = 5 * 60;
@@ -64,7 +64,7 @@ struct peer *peers;
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define MIN(x, y) ((x) >= (y) ? (y) : (x))
 
-cps int
+static cps int
 send_message_2(int fd, int id,
                char *body1, int bodylen1, char *body2, int bodylen2)
 {
@@ -103,13 +103,13 @@ send_message_2(int fd, int id,
     return 1;
 }
 
-cps int
+static cps int
 send_message(int fd, int id, char *body, int bodylen)
 {
     return send_message_2(fd, id, body, bodylen, NULL, 0);
 }
 
-cps int
+static cps int
 send_message_h(int fd, char *head, int headlen,
                int id, char *body, int bodylen)
 {
@@ -148,7 +148,7 @@ send_message_h(int fd, char *head, int headlen,
     return 1;
 }
 
-cps int
+static cps int
 send_bitfield(int fd, struct torrent *t, char *head, int headlen)
 {
     int length = 0;
@@ -180,7 +180,7 @@ send_bitfield(int fd, struct torrent *t, char *head, int headlen)
     return 1;
 }
 
-cps int
+static cps int
 send_choke(int fd)
 {
     int rc;
@@ -193,7 +193,7 @@ send_choke(int fd)
     return 0;
 }
 
-cps int
+static cps int
 send_unchoke(int fd)
 {
     int rc;
@@ -206,7 +206,7 @@ send_unchoke(int fd)
     return 0;
 }
 
-cps int
+static cps int
 send_dht_port(int fd, unsigned short port)
 {
     int rc;
@@ -222,7 +222,7 @@ send_dht_port(int fd, unsigned short port)
     return 0;
 }
 
-cps int
+static cps int
 send_ltep_message(int fd, int id, char *body, int bodylen)
 {
     char buf[1];
@@ -261,7 +261,7 @@ global_ipv6(void)
         return NULL;
 }
 
-cps int
+static cps int
 send_ltep_handshake(int fd, unsigned short port)
 {
     int rc;
@@ -312,7 +312,7 @@ map_file(struct torrent *t, int index)
     return map;
 }
 
-int
+static int
 find_chunk(struct torrent *t, uint64_t begin, uint64_t length,
            int *first_return, int *last_return,
            uint64_t *offset_return, uint64_t *last_len_return)
@@ -361,7 +361,7 @@ find_chunk(struct torrent *t, uint64_t begin, uint64_t length,
     return 1;
 }
 
-cps int
+static cps int
 send_multi_chunk(int fd, struct chunk *chunk,
                  int first, int last, uint64_t offset)
 {
@@ -422,7 +422,7 @@ send_multi_chunk(int fd, struct chunk *chunk,
     return -1;
 }
 
-cps int
+static cps int
 unchoke_peer(int fd)
 {
     int rc;
@@ -441,7 +441,7 @@ unchoke_peer(int fd)
     return 1;
 }
 
-cps int
+static cps int
 choke_peer(int fd)
 {
     int rc;
@@ -460,7 +460,7 @@ choke_peer(int fd)
     return 1;
 }
 
-cps int
+static cps int
 send_chunk(int fd, struct chunk *chunk)
 {
     int file, i, rc;
@@ -537,7 +537,7 @@ send_chunk(int fd, struct chunk *chunk)
     return 0;
 }
 /* return -1 if sth wrong happend in handshake otherwise return 0 */
-cps int
+static cps int
 handshake(hashtable *ht, int fd)
 {
     int rc, i;
@@ -622,7 +622,7 @@ fail:
     return -1;
 }
 
-cps void
+static cps void
 stream_writer(int fd)
 {
     struct chunk *chunk;
@@ -750,7 +750,7 @@ stream_writer(int fd)
     cpc_barrier_await(peers[fd].barrier);
 }
 
-cps int
+static cps int
 stream_reader(int fd)
 {
     uint32_t length = 0;
@@ -892,7 +892,7 @@ stream_reader(int fd)
     return -1;
 }
 
-void
+static void
 free_chunk_list(struct chunk* c)
 {
     struct chunk *next;
@@ -903,7 +903,7 @@ free_chunk_list(struct chunk* c)
     }
 }
 
-void
+static void
 free_chunks(int fd)
 {
     free_chunk_list(peers[fd].list);
@@ -911,7 +911,7 @@ free_chunks(int fd)
     return ;
 }
 
-cps void
+static cps void
 client(hashtable *t, int client_fd)
 {
     int rc = 0;
