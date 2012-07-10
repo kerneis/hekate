@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#define NO_CPS_PROTO
+#include <cpc/cpc_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +34,7 @@ THE SOFTWARE.
 
 #include "parse.h"
 #include "torrent.h"
+#include "util.h"
 
 static int
 concat_path(struct file *f, char *curr_path, benc *l)
@@ -167,8 +170,8 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
 }
 
 
-parse_info(struct torrent *elmt, char *curr_path, benc *raw)
 static int
+parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
 {
     int i, rc, path_length;
     char *path = NULL;
@@ -246,7 +249,7 @@ static int
 }
 
 struct torrent *
-parse_torrent(char *curr_path, benc *raw)
+parse_torrent(const char *curr_path, benc *raw)
 {
     int i, rc;
     struct torrent *elmt;
@@ -297,8 +300,6 @@ parse_torrent(char *curr_path, benc *raw)
     free_torrent(elmt);
     return NULL;
 }
-
-extern void debugf(int level, const char *format, ...);
 
 int
 validate_torrent(struct torrent *t)

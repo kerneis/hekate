@@ -47,6 +47,7 @@ THE SOFTWARE.
 #include "tracker.h"
 #include "util.h"
 
+
 char peer_id[21];
 int notracker = 0, nodht = 0;
 int noipv4 = 0;
@@ -446,11 +447,10 @@ dht_hash(void *hash_return, int hash_size,
     memcpy(hash_return, sha1, hash_size > 20 ? 20 : hash_size);
 }
 
-static int devrandom = -1;
-
 int
 dht_random_bytes(void *buf, size_t size)
 {
+    static int devrandom = -1;
     int fd, rc, save;
 
     if(devrandom < 0) {

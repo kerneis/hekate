@@ -74,16 +74,16 @@ add_set (benc *b, benc *obj)
 buffer *
 open_buffer(const char *pathname)
 {
-    int fd;
+    int file;
     buffer *b;
 
-    if(!(fd = open(pathname, O_RDONLY|O_NONBLOCK)))
+    if(!(file = open(pathname, O_RDONLY|O_NONBLOCK)))
         { perror("open_buffer)open"); return NULL; }
 
     if(!(b = malloc(sizeof(buffer))))
-        { perror("open_buffer)malloc"); close(fd); return NULL; }
+        { perror("open_buffer)malloc"); close(file); return NULL; }
 
-    b->fd = fd;
+    b->file = file;
     b->cur = 0;
     b->eof = -1;
     b->buf = malloc(BUF_SIZE);
@@ -95,7 +95,7 @@ open_buffer(const char *pathname)
 void
 close_buffer(buffer *b)
 {
-    close(b->fd);
+    close(b->file);
     free(b->buf);
     free(b);
 }
@@ -123,7 +123,7 @@ get_byte(buffer *b)
 
     if(b->cur == 0) {
        while(i < BUF_SIZE) {
-           rc = read(b->fd, b->buf+i, BUF_SIZE-rc);
+           rc = read(b->file, b->buf+i, BUF_SIZE-rc);
            if(rc == -1) {
                if(errno != EAGAIN) {
                    perror("read (in get_byte)");

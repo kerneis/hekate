@@ -20,6 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifndef IO_H
+#define IO_H
+
 typedef struct cpc_buffer {
   int size;
   int start;
@@ -34,3 +37,5 @@ cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
 
 cpc_buffer *cpc_buffer_get(int size);
 void cpc_buffer_destroy(cpc_buffer *b);
+
+#endif /* IO_H */

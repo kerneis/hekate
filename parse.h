@@ -57,7 +57,7 @@ void free_benc(benc * node);
 
 typedef struct buffer {
   char * buf;
-  int fd;
+  int file;
   int cur;
   int eof;
   SHA_CTX sha1;
