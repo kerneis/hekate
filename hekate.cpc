@@ -52,7 +52,7 @@ int list_only = 0;
 /*
   getting the directory path and try to add them all to our hashtable
 */
-void
+static void
 upload(hashtable *table, char *path)
 {
     DIR *dir;
