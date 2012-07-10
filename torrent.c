@@ -52,7 +52,7 @@ concat_path(struct file *f, char *curr_path, benc *l)
     memcpy(path, curr_path, pos);
 
     for(i = 0; i < l->size; i++) {
-        if(l->set.l[i]->type != STRING) {
+        if(l->set.l[i]->type != TOKEN_STRING) {
             free(path);
             return -2;
         }
@@ -121,7 +121,7 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
     k = 0;
     for(i=0; i<raw->size; i++) {
         dico = raw->set.l[i];
-        if(dico->type != DICT) return -2;
+        if(dico->type != TOKEN_DICT) return -2;
 
         f = malloc(sizeof(struct file));
         if(!f) {
@@ -133,17 +133,17 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
         f->map = NULL;
 
         for(j = 0; j < dico->size; j += 2) {
-            if((dico->set.l[j])->type != STRING) {
+            if((dico->set.l[j])->type != TOKEN_STRING) {
                 return -2;
             }
 
             if(strcmp((dico->set.l[j])->s, "length") == 0 &&
-               (dico->set.l[j+1])->type == INT) {
+               (dico->set.l[j+1])->type == TOKEN_INT) {
                 if(dico->set.l[j+1]->i < 0)
                     return -1;
                 f->length = dico->set.l[j+1]->i;
             } else if(strcmp((dico->set.l[j])->s, "path") == 0 &&
-                      (dico->set.l[j+1])->type == LIST) {
+                      (dico->set.l[j+1])->type == TOKEN_LIST) {
                 rc = concat_path(f, curr_path, dico->set.l[j+1]);
                 if(rc<0) return rc;
             }
@@ -178,11 +178,11 @@ parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
     benc *multi_files = NULL;
 
     for(i = 0; i < raw->size; i += 2) {
-        if((raw->set.l[i])->type != STRING)
+        if((raw->set.l[i])->type != TOKEN_STRING)
             continue;
             
         if(strcmp((raw->set.l[i])->s, "length") == 0 &&
-           (raw->set.l[i+1])->type == INT) {
+           (raw->set.l[i+1])->type == TOKEN_INT) {
             if(raw->set.l[i+1]->i < 0)
                 return -1;
 
@@ -200,7 +200,7 @@ parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
             elmt->num_files = 1;
             elmt->files[0]->length = raw->set.l[i+1]->i;
         } else if(strcmp((raw->set.l[i])->s, "files") == 0 &&
-                  (raw->set.l[i+1])->type == LIST) {
+                  (raw->set.l[i+1])->type == TOKEN_LIST) {
             elmt->num_files = raw->set.l[i+1]->size;
             elmt->files = calloc(elmt->num_files, sizeof(struct file *));
             if(!elmt->files){
@@ -210,7 +210,7 @@ parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
             /* we need to know p_length */
             multi_files = raw->set.l[i+1];
         } else if(strcmp((raw->set.l[i])->s, "name") == 0 &&
-                  (raw->set.l[i+1])->type == STRING) {
+                  (raw->set.l[i+1])->type == TOKEN_STRING) {
             path_length = raw->set.l[i+1]->size + strlen(curr_path) + 2;
             path = malloc(path_length);
             if(!path) {
@@ -225,7 +225,7 @@ parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
                 elmt->files[0]->path = path;
             }
         } else if(strcmp((raw->set.l[i])->s, "piece length") == 0 &&
-                  (raw->set.l[i+1])->type == INT) {
+                  (raw->set.l[i+1])->type == TOKEN_INT) {
             if(raw->set.l[i+1]->i < 0)
                 return -1;
             elmt->p_length = (raw->set.l[i+1])->i;
@@ -237,11 +237,11 @@ parse_info(struct torrent *elmt, const char *curr_path, benc *raw)
                 if(rc<0) return rc;
             }
         } else if(strcmp((raw->set.l[i])->s, "pieces") == 0 &&
-                  (raw->set.l[i+1])->type == STRING) {
+                  (raw->set.l[i+1])->type == TOKEN_STRING) {
             assert(raw->set.l[i+1]->size >= 0);
             elmt->num_chunks = raw->set.l[i+1]->size/20;
         } else if(strcmp((raw->set.l[i])->s, "private") == 0 &&
-                  (raw->set.l[i+1])->type == INT) {
+                  (raw->set.l[i+1])->type == TOKEN_INT) {
             elmt->private = !!(raw->set.l[i+1])->i;
         }
     }
@@ -260,19 +260,19 @@ parse_torrent(const char *curr_path, benc *raw)
         goto internal_error;
     }
 
-    if(raw->type != DICT)
+    if(raw->type != TOKEN_DICT)
         goto torrent_error;
 
     for(i=0; i < raw->size; i += 2) {
-        if((raw->set.l[i])->type != STRING)
+        if((raw->set.l[i])->type != TOKEN_STRING)
             continue;
 
         if(strcmp((raw->set.l[i])->s, "announce") == 0 &&
-           (raw->set.l[i+1])->type == STRING) {
+           (raw->set.l[i+1])->type == TOKEN_STRING) {
             elmt->tracker_url = (raw->set.l[i+1])->s;
             raw->set.l[i+1]->s = NULL;
         } else if(strcmp((raw->set.l[i])->s, "info") == 0 &&
-                  (raw->set.l[i+1])->type == DICT ) {
+                  (raw->set.l[i+1])->type == TOKEN_DICT ) {
             rc = parse_info(elmt, curr_path, raw->set.l[i+1]);
             if(rc < -1)
                 goto torrent_error;
