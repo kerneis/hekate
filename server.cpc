@@ -447,7 +447,8 @@ send_multi_chunk(int sock, struct chunk *chunk,
 
     t->uploaded += chunk->length;
     GET_PEER(sock)->credit -= chunk->length;
-    assert(GET_PEER(sock)->credit >= 0 && GET_PEER(sock)->credit < initial_credit);
+    assert(GET_PEER(sock)->credit >= 0 &&
+           GET_PEER(sock)->credit < initial_credit);
 
     free(body);
     return 0;
@@ -571,6 +572,7 @@ send_chunk(int sock, struct chunk *chunk)
 
     return 0;
 }
+
 /* return -1 if sth wrong happend in handshake otherwise return 0 */
 static cps int
 handshake(hashtable *ht, int sock)
@@ -601,14 +603,13 @@ handshake(hashtable *ht, int sock)
     }
 
     torrent = ht_get(ht, b->buf + 28);
-
-    for(i = 0; i<20; i++)
-        snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(b->buf + 28 + i));
-
     if(!torrent) {
         debugf(2, "%3d cannot find hash: %s\n", sock, id);
         goto fail;
     }
+
+    for(i = 0; i<20; i++)
+        snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(b->buf + 28 + i));
 
     debugf(2, "%3d torrent requested: %s\n", sock, id);
 
@@ -897,7 +898,7 @@ stream_reader(int sock)
                     goto fail;
                 }
                 GET_PEER(sock)->list = add_chunk(GET_PEER(sock)->list,
-                                           index, begin, chunk_len);
+                                                 index, begin, chunk_len);
                 for(i = first; i <= last; i++) {
                     if(GET_PEER(sock)->t->files[i]->map)
                         prefetch(GET_PEER(sock)->t->files[i]->map +
@@ -909,7 +910,7 @@ stream_reader(int sock)
                 cpc_signal(GET_PEER(sock)->writer_cond);
             } else {
                 GET_PEER(sock)->list = remove_chunk(GET_PEER(sock)->list,
-                                              index, begin, chunk_len);
+                                                    index, begin, chunk_len);
             }
             break;
 
@@ -1038,8 +1039,9 @@ listening(hashtable * table)
     serv_addr.sin6_family = AF_INET6;
     serv_addr.sin6_port = htons(peer_port);
 
-    if (bind(serv_sock, (struct sockaddr *) &serv_addr,
-             sizeof(serv_addr)) < 0)
+    rc = bind(serv_sock, (struct sockaddr *) &serv_addr,
+              sizeof(serv_addr));
+    if(rc < 0)
         perror("(listening)bind");
 
     rc = listen(serv_sock, 20);
@@ -1055,8 +1057,8 @@ listening(hashtable * table)
 
         cli_len = sizeof(cli_addr);
         client_sock = accept(serv_sock,
-                           (struct sockaddr *)&cli_addr,
-                           &cli_len);
+                             (struct sockaddr *)&cli_addr,
+                             &cli_len);
         if(client_sock<0) {
             if(errno != EAGAIN && errno != EINTR) {
                 perror("(listening)accept");
@@ -1066,7 +1068,7 @@ listening(hashtable * table)
         }
         debugf(2, "%3d accepted\n", client_sock);
 
-        assert(!peers[client_sock].t);
+        assert(GET_PEER(client_sock)->t == NULL);
 
         assert(numpeers >= 0 && numpeers <= maxpeers);
         if(numpeers >= maxpeers) {

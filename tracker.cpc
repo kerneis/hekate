@@ -38,7 +38,6 @@ THE SOFTWARE.
 
 #include "dht/dht.h"
 #pragma cpc_no_retain("dht_periodic")
-
 #include "io.h"
 #include "list.h"
 #include "torrent.h"
@@ -240,8 +239,6 @@ dht_announcer(int af)
 
 /* dht's backlog functions */
 static cps void dht_loop_aux(int dht_socket, cpc_condvar *cond);
-/* Should this be malloced? */
-static char buf[1537];
 static time_t dht_tosleep = 0;
 static cpc_timeout *dht_timeout = NULL;
 
@@ -267,6 +264,7 @@ dht_loop(int dht_socket, int dht6_socket)
 static cps void
 dht_loop_aux(int dht_socket, cpc_condvar *cond)
 {
+    static char buf[1537];
     int rc;
     int64_t rc64;
     struct sockaddr_storage from;

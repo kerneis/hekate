@@ -270,11 +270,11 @@ main(int argc, char **argv)
     if(list_only)
         goto quit;
 
-    init_trackers(trackers);
-
     sigemptyset (&signal_mask);
     sigaddset (&signal_mask, SIGPIPE);
     pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
+
+    cpc_spawn { init_trackers(trackers); };
 
     cpc_spawn listening(table);
 
