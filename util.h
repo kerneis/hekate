@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <sys/socket.h>
+
 extern int debug_level;
 extern size_t pagesize;
 
@@ -50,7 +52,7 @@ extern size_t pagesize;
          memcpy((_d), &(_dd), sizeof(unsigned)); } while(0);
 #endif
 
-void debugf(int level, const char *format, ...) __attribute__((cpc_no_retain));
+void debugf(int level, const char *format, ...) CPC_NO_RETAIN_ATTRIBUTE;
 int prefetch(void *begin, size_t length);
 int incore(void *begin, size_t length);
 int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
@@ -58,5 +60,5 @@ int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
 int get_name_source_address(int af, const char *name,
                             struct sockaddr *src, socklen_t *src_len);
 int global_unicast_address(struct sockaddr *sa);
-int find_global_address(int af, void *addr, int *addr_len) __attribute__((cpc_no_retain));
+int find_global_address(int af, void *addr, int *addr_len) CPC_NO_RETAIN_ATTRIBUTE;
 

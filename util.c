@@ -20,6 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#define NO_CPS_PROTO
+#include <cpc/cpc_runtime.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -74,7 +76,7 @@ incore(void *begin, size_t length)
     if(lr > 32 * pagesize)
         return -1;
 
-    rc = mincore((void*)br, l, vec);
+    rc = mincore((void*)br, l, (void*)vec);
     if(rc < 0)
         return -1;
 
