@@ -23,6 +23,8 @@ THE SOFTWARE.
 
 #define _GNU_SOURCE
 
+#include <cpc/cpc_runtime.h>
+
 #include <assert.h>
 #include <dirent.h>
 #include <pthread.h>
@@ -37,8 +39,6 @@ THE SOFTWARE.
 
 #include <curl/curl.h>
 #include <openssl/sha.h>
-
-#include <cpc/cpc_runtime.h>
 
 #include "util.h"
 #include "hashtable.h"

@@ -26,6 +26,9 @@ THE SOFTWARE.
     ZO RELAXEN UND WATSCHEN DER BLINKENLICHTEN.
 */
 
+#include <cpc/cpc_runtime.h>
+#include <cpc/cpc_lib.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -34,8 +37,6 @@ THE SOFTWARE.
 #include <assert.h>
 #include <string.h>
 
-#include <cpc/cpc_runtime.h>
-#include <cpc/cpc_lib.h>
 #include "io.h"
 
 const int io_timeout = 60; /* one minute timeout per I/O (read) */

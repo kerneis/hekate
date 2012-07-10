@@ -23,6 +23,9 @@ THE SOFTWARE.
 
 #define _GNU_SOURCE
 
+#include <cpc/cpc_runtime.h>
+#include <cpc/cpc_lib.h>
+
 #include <curl/curl.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -37,8 +40,6 @@ THE SOFTWARE.
 #include "dht/dht.h"
 #pragma cpc_no_retain("dht_periodic")
 
-#include <cpc/cpc_runtime.h>
-#include <cpc/cpc_lib.h>
 #include "io.h"
 #include "list.h"
 #include "torrent.h"

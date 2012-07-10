@@ -21,6 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <cpc/cpc_runtime.h>
+#include <cpc/cpc_lib.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,9 +35,6 @@ THE SOFTWARE.
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <assert.h>
-
-#include <cpc/cpc_runtime.h>
-#include <cpc/cpc_lib.h>
 
 #include "util.h"
 #include "hashtable.h"
