@@ -49,6 +49,29 @@ THE SOFTWARE.
 
 int list_only = 0;
 
+static struct stat file_stats;
+static inline int
+set_attributes(const char*path)
+{
+    return lstat(path, &file_stats);
+}
+
+static inline int
+is_a_normal_file(const char*path)
+{
+    if(path != NULL && set_attributes(path) < 0)
+        return -1;
+    return S_ISREG(file_stats.st_mode) ? 1 : 0;
+}
+
+static inline int
+is_a_directory(const char*path)
+{
+    if(path != NULL && set_attributes(path) < 0)
+        return -1;
+    return S_ISDIR(file_stats.st_mode) ? 1 : 0;
+}
+
 /*
   getting the directory path and try to add them all to our hashtable
 */
@@ -62,7 +85,6 @@ upload(hashtable *table, char *path)
     benc *result;
     struct torrent *elmt;
     struct dirent *entry;
-    struct stat st;
     char id[41];
 
     if(path[strlen(path)-1] == '/')
@@ -87,14 +109,14 @@ upload(hashtable *table, char *path)
             continue;
         }
 
-        if(lstat(curr_path, &st)) {
+        if(set_attributes(curr_path) < 0) {
             fprintf(stderr, "%s ", curr_path);
             perror("(upload)lstat");
             free(curr_path);
             continue;
         }
-        /* it's a normal file */
-        if(S_ISREG(st.st_mode)){
+
+        if(is_a_normal_file(NULL)) {
             pos = strlen(entry->d_name) - 8;
 
             if(pos >= 0 && strcmp(entry->d_name + pos, ".torrent") == 0) {
@@ -135,10 +157,9 @@ upload(hashtable *table, char *path)
 
                 close_buffer(buf);
             }
-        }
-        /* is  a directory */
-        else if(S_ISDIR(st.st_mode))
+        } else if(is_a_directory(NULL)) {
             upload(table, curr_path);
+        }
 
         free(curr_path);
     }
