@@ -31,10 +31,10 @@ THE SOFTWARE.
 #define SET_BASE_SIZE 8
 
 typedef enum benc_type{
-  INT,
-  STRING,
-  LIST,
-  DICT
+  TOKEN_INT,
+  TOKEN_STRING,
+  TOKEN_LIST,
+  TOKEN_DICT
 } benc_type;
 
 typedef struct benc benc;

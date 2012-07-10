@@ -46,11 +46,11 @@ make_benc(benc_type type)
     r = calloc(1, sizeof(benc));
 
     switch (r->type = type) {
-        case INT:
-        case STRING:
+        case TOKEN_INT:
+        case TOKEN_STRING:
             break;
-         case LIST:
-         case DICT:
+         case TOKEN_LIST:
+         case TOKEN_DICT:
             r->set.l = malloc(SET_BASE_SIZE*sizeof(benc *));
             r->size = SET_BASE_SIZE;
             r->set.used = 0;
@@ -61,7 +61,7 @@ make_benc(benc_type type)
 static inline void
 add_set (benc *b, benc *obj)
 {
-    assert(b->type == LIST || b->type == DICT);
+    assert(b->type == TOKEN_LIST || b->type == TOKEN_DICT);
     if(b->size == b->set.used) {
         b->set.l = realloc(b->set.l, 2*b->size*sizeof(benc *));
         b->size *= 2;
@@ -204,7 +204,7 @@ parse_dict (buffer *b, benc *r)
     benc *key, *value;
 
     while((key = parsing(b)) != NULL) {
-        assert(key->type == STRING);
+        assert(key->type == TOKEN_STRING);
         add_set(r, key);
         if((!b->hashing) && !strcmp(key->s, "info")) {
             start_hashing(b);
@@ -235,17 +235,17 @@ parsing(buffer *b)
 
     switch (c=get_byte(b)) {
         case 'i':
-            r = make_benc(INT);
+            r = make_benc(TOKEN_INT);
             r->i = parse_int(b,get_byte(b),'e');
             break;
         case 'd':
             /* printf("dict!\n"); */
-            r = make_benc(DICT);
+            r = make_benc(TOKEN_DICT);
             parse_dict(b, r);
             return r;
         case 'l':
             /* printf("list!\n"); */
-            r = make_benc(LIST);
+            r = make_benc(TOKEN_LIST);
             parse_list(b, r);
             return r;
         case 'e': /* end of a list or dict: return NULL */
@@ -257,7 +257,7 @@ parsing(buffer *b)
                         b->cur);
                 break;
             }
-            r = make_benc(STRING);
+            r = make_benc(TOKEN_STRING);
             n = parse_int(b,c,':');
             r->size = n;
             r->s = get_string(b,n);
@@ -271,14 +271,14 @@ free_benc(benc *node)
 {
     int i;
     switch(node->type) {
-        case INT:
+        case TOKEN_INT:
             break;
-        case STRING:
+        case TOKEN_STRING:
             if( node->s )
                 free(node->s);
             break;
-        case LIST:
-        case DICT:
+        case TOKEN_LIST:
+        case TOKEN_DICT:
             for(i=0; i<node->set.used; i++)
                 free_benc(node->set.l[i]);
             free(node->set.l);
