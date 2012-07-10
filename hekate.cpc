@@ -37,7 +37,6 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <curl/curl.h>
 #include <openssl/sha.h>
 
 #include "util.h"
@@ -49,11 +48,14 @@ THE SOFTWARE.
 
 int list_only = 0;
 
-static struct stat file_stats;
+static int attributes;
 static inline int
 set_attributes(const char*path)
 {
-    return lstat(path, &file_stats);
+    attributes = GetFileAttributes(path);
+    if(attributes == INVALID_FILE_ATTRIBUTES)
+        return -1;
+    return 0;
 }
 
 static inline int
@@ -61,7 +63,11 @@ is_a_normal_file(const char*path)
 {
     if(path != NULL && set_attributes(path) < 0)
         return -1;
-    return S_ISREG(file_stats.st_mode) ? 1 : 0;
+    return attributes &
+        (FILE_ATTRIBUTE_NORMAL     |
+         FILE_ATTRIBUTE_ARCHIVE    |
+         FILE_ATTRIBUTE_COMPRESSED |
+         FILE_ATTRIBUTE_ENCRYPTED   ) ? 1 : 0;
 }
 
 static inline int
@@ -69,7 +75,7 @@ is_a_directory(const char*path)
 {
     if(path != NULL && set_attributes(path) < 0)
         return -1;
-    return S_ISDIR(file_stats.st_mode) ? 1 : 0;
+    return attributes == FILE_ATTRIBUTE_DIRECTORY ? 1 : 0;
 }
 
 /*
@@ -97,16 +103,15 @@ upload(hashtable *table, char *path)
     }
 
     while((entry = readdir(dir))) {
-        rc = asprintf(&curr_path, "%s/%s", path, entry->d_name);
+        if(strcmp(entry->d_name,".") == 0 ||
+           strcmp(entry->d_name,"..") == 0) {
+            continue;
+        }
+
+        curr_path = sprintf_a("%s/%s", path, entry->d_name);
         if(rc < 0){
             perror("(upload)asprintf");
             goto fail;
-        }
-
-        if(strcmp(entry->d_name,".") == 0 ||
-           strcmp(entry->d_name,"..") == 0) {
-            free(curr_path);
-            continue;
         }
 
         if(set_attributes(curr_path) < 0) {
@@ -138,7 +143,8 @@ upload(hashtable *table, char *path)
                 }
 
                 for(i = 0; i<20; i++)
-                    snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(elmt->info_hash + i));
+                    snprintf(id + 2 * i, 3, "%.2x",
+                             (unsigned char)*(elmt->info_hash + i));
 
                 if(!!validate_torrent(elmt))
                     debugf(1, "Added: %s %s\n", id, curr_path);
@@ -169,14 +175,25 @@ upload(hashtable *table, char *path)
     return;
 }
 
+static void
+initWSA(void)
+{
+    WSADATA wsaData;
+    WORD versionRequested = MAKEWORD(2,2);
+    int rc;
+    rc = WSAStartup(versionRequested, &wsaData); /* init wsaData */
+    if(rc != 0) {
+        printf("WSAStartup: %d", rc);
+        exit(1);
+    }
+}
+
 int
 main(int argc, char **argv)
 {
     hashtable *table;
-    CURLcode global;
     int i;
     unsigned char buf[6];
-    sigset_t   signal_mask;
 
     while(1) {
         int opt;
@@ -238,7 +255,7 @@ main(int argc, char **argv)
 
     strcpy(peer_id, "-HK0000-");
 
-    srand((getpid() + 19) * (((int)(size_t)pthread_self()) + 71)
+    srand((GetCurrentThreadId() + 19) * (GetCurrentProcessId() + 71)
           * (rand() + 42) * time(NULL));
     random_bytes(buf, 6);
 
@@ -246,9 +263,6 @@ main(int argc, char **argv)
         snprintf(peer_id + 8 + 2 * i, 21 - (8 + 2 * i), "%02X",
                  (buf[i] & 0xFF));
     peer_id[20] = '\0';
-
-    global = curl_global_init(CURL_GLOBAL_ALL);
-    assert(!global);
 
     trackers = NULL;
 
@@ -270,19 +284,16 @@ main(int argc, char **argv)
     if(list_only)
         goto quit;
 
-    sigemptyset (&signal_mask);
-    sigaddset (&signal_mask, SIGPIPE);
-    pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
+    initWSA();
 
-    cpc_spawn { init_trackers(trackers); };
+    init_trackers(trackers);
 
     cpc_spawn listening(table);
 
+    debugf(2, "Initilisation complete: entering main loop.\n");
     cpc_main_loop();
 
   quit:
-    curl_global_cleanup();
-
     ht_free(table);
 
     return 0;

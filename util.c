@@ -21,23 +21,12 @@ THE SOFTWARE.
 */
 
 #define NO_CPS_PROTO
-#include <cpc/cpc_runtime.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <assert.h>
+#include <cpc/compatibility.h>
+#include <Ws2tcpip.h>
+#include <wincrypt.h>
 
 #include "util.h"
+/* #include <Bcrypt.h> MinGW hasn't Bcrypt.h */
 
 int debug_level = 0;
 size_t pagesize;
@@ -54,38 +43,12 @@ debugf(int level, const char *format, ...)
     va_end(args);
 }
 
-int
-prefetch(void *begin, size_t length)
+long
+random(void)
 {
-    size_t b = (size_t)begin;
-    size_t br = b / pagesize * pagesize;
-    size_t l = length + (b - br);
-    size_t lr = (l + (pagesize - 1)) / pagesize * pagesize;
-    assert(length > 0 && length <= LARGE_CHUNK);
-    return posix_madvise((void*)br, lr, POSIX_MADV_WILLNEED);
-}
-
-int
-incore(void *begin, size_t length)
-{
-    size_t b = (size_t)begin;
-    size_t br = b / pagesize * pagesize;
-    size_t l = length + (b - br);
-    size_t lr = (l + (pagesize - 1)) / pagesize * pagesize;
-    unsigned char vec[32];
-    int i, rc;
-
-    if(lr > 32 * pagesize)
-        return -1;
-
-    rc = mincore((void*)br, l, (void*)vec);
-    if(rc < 0)
-        return -1;
-
-    for(i = 0; i < lr / pagesize; i++)
-        if(!(vec[i] & 1))
-            return 0;
-    return 1;
+    long number;
+    random_bytes(&number, sizeof(number));
+    return number;
 }
 
 /* Get the source address used for a given interface address.  Since there
@@ -110,13 +73,13 @@ get_source_address(const struct sockaddr *dst, socklen_t dst_len,
     if(rc < 0)
         goto fail;
 
-    close(s);
+    closesocket(s);
 
     return rc;
 
  fail:
     save = errno;
-    close(s);
+    closesocket(s);
     errno = save;
     return -1;
 }
@@ -174,7 +137,7 @@ global_unicast_address(struct sockaddr *sa)
         /* 2000::/3 */
         return (a[0] & 0xE0) == 0x20;
     } else {
-        errno = EAFNOSUPPORT;
+        errno = WSAEAFNOSUPPORT;
         return -1;
     }
 }
@@ -186,9 +149,11 @@ find_global_address(int af, void *addr, int *addr_len)
     socklen_t ss_len = sizeof(ss);
     int rc;
 
+    debugf(5, "Try to get address of www.transmissionbt.com\n");
     /* This should be a name with both IPv4 and IPv6 addresses. */
     rc = get_name_source_address( af, "www.transmissionbt.com",
                                   (struct sockaddr*)&ss, &ss_len );
+    debugf(5, "Failed. Try to get address of www.ietf.org\n");
     /* In case Charles removes IPv6 from his website. */
     if( rc < 0 )
         rc = get_name_source_address(  af, "www.ietf.org",
@@ -218,21 +183,85 @@ find_global_address(int af, void *addr, int *addr_len)
     }
 }
 
+/* Note that this is different from GNU's strndup(3). */
+char *
+strdup_n(const char *buf, int n)
+{
+    char *s;
+    s = malloc(n + 1);
+    if(s == NULL)
+        return NULL;
+    memcpy(s, buf, n);
+    s[n] = '\0';
+    return s;
+}
+
+char*
+vsprintf_a(const char *f, va_list args)
+{
+    int n, size;
+    char buf[64];
+    char *string;
+    va_list args_copy;
+
+    va_copy(args_copy, args);
+    n = vsnprintf(buf, 64, f, args_copy);
+    if(n >= 0 && n < 64) {
+        return strdup_n(buf, n);
+    }
+    if(n >= 64)
+        size = n + 1;
+    else
+        size = 96;
+
+    while(1) {
+        string = malloc(size);
+        if(!string)
+            return NULL;
+        va_copy(args_copy, args);
+        n = vsnprintf(string, size, f, args_copy);
+        if(n >= 0 && n < size)
+            return string;
+        else if(n >= size)
+            size = n + 1;
+        else
+            size = size * 3 / 2;
+        free(string);
+        if(size > 16 * 1024)
+            return NULL;
+    }
+    /* NOTREACHED */
+}
+
+char*
+sprintf_a(const char *f, ...)
+{
+    char *s;
+    va_list args;
+    va_start(args, f);
+    s = vsprintf_a(f, args);
+    va_end(args);
+    return s;
+}
+
 int
 random_bytes(void *buffer, size_t size)
 {
-    static int devrandom = -1;
+    static HCRYPTPROV hProv = NULL;
     int rc;
-
-    if(devrandom < 0) {
-        devrandom = open("/dev/urandom", O_RDONLY);
-        if(devrandom < 0)
-            goto cannot_open_random_file;
+    if(hProv) goto key_container_acquired;
+    rc = CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, 0);
+    if(rc) goto key_container_acquired;
+    if(GetLastError() != NTE_BAD_KEYSET) {
+        print_error("Cannot acquire cryptographic service handle");
+        goto cannot_have_cryptographic_service_handle;
     }
+    rc = CryptAcquireContext(&hProv,NULL,NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET);
 
-    rc = read(devrandom, buffer, size);
-    return rc;
- cannot_open_random_file:
+ key_container_acquired:
+    rc = CryptGenRandom(hProv, size, buffer);
+    return rc ? size : -1;
+ cannot_have_cryptographic_service_handle:
     for(rc = 0; rc < size; rc ++)
         *(unsigned char*)(buffer + rc) = (unsigned char) (rand() % 0xFF);
     return 0;

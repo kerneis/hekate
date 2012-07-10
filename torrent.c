@@ -22,7 +22,6 @@ THE SOFTWARE.
 */
 
 #define NO_CPS_PROTO
-#include <cpc/cpc_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -130,7 +129,6 @@ parse_files(struct torrent *elmt, char *curr_path, benc *raw)
         }
 
         f->offset = offset;
-        f->map = NULL;
 
         for(j = 0; j < dico->size; j += 2) {
             if((dico->set.l[j])->type != TOKEN_STRING) {

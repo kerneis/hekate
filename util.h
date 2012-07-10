@@ -21,7 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include <sys/socket.h>
+#include <cpc/cpc_runtime.h>
+#if defined(__GNUC__) && (__GNUC__ >= 3)
+#define ATTRIBUTE(x) __attribute__(x)
+#else
+#define ATTRIBUTE(x) /**/
+#endif
 
 extern int debug_level;
 extern size_t pagesize;
@@ -53,8 +58,6 @@ extern size_t pagesize;
 #endif
 
 void debugf(int level, const char *format, ...) CPC_NO_RETAIN_ATTRIBUTE;
-int prefetch(void *begin, size_t length);
-int incore(void *begin, size_t length);
 int get_source_address(const struct sockaddr *dst, socklen_t dst_len,
                        struct sockaddr *src, socklen_t *src_len);
 int get_name_source_address(int af, const char *name,
@@ -62,4 +65,5 @@ int get_name_source_address(int af, const char *name,
 int global_unicast_address(struct sockaddr *sa);
 int find_global_address(int af, void *addr, int *addr_len)
     CPC_NO_RETAIN_ATTRIBUTE;
+char* sprintf_a(const char *f, ...) ATTRIBUTE((malloc, format (printf, 1, 2)));
 int random_bytes(void *buffer, size_t size);

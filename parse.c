@@ -21,22 +21,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <errno.h>
-#include <unistd.h>
-#include <string.h>
-
+#define NO_CPS_PROTO
+#include <cpc/cpc_io.h>
 #include <ctype.h> /* isdigit */
 #include <inttypes.h> /* int64_t */
 #include <openssl/sha.h>
 
 #include "parse.h"
 #include "hashtable.h"
+
+struct buffer {
+  char * buf;
+  HANDLE file;
+  int cur;
+  int eof;
+  SHA_CTX sha1;
+  char hashing;
+};
 
 static benc *
 make_benc(benc_type type)
@@ -74,14 +75,17 @@ add_set (benc *b, benc *obj)
 buffer *
 open_buffer(const char *pathname)
 {
-    int file;
+    cpc_handle_t file;
     buffer *b;
 
-    if(!(file = open(pathname, O_RDONLY|O_NONBLOCK)))
+    file = CreateFile(pathname, GENERIC_READ,
+                      FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(file == INVALID_HANDLE_VALUE)
         { perror("open_buffer)open"); return NULL; }
 
     if(!(b = malloc(sizeof(buffer))))
-        { perror("open_buffer)malloc"); close(file); return NULL; }
+        { perror("open_buffer)malloc"); CloseHandle(file); return NULL; }
 
     b->file = file;
     b->cur = 0;
@@ -95,7 +99,7 @@ open_buffer(const char *pathname)
 void
 close_buffer(buffer *b)
 {
-    close(b->file);
+    CloseHandle(b->file);
     free(b->buf);
     free(b);
 }
@@ -120,22 +124,19 @@ get_byte(buffer *b)
 {
     int rc=0, i = 0;
     char c;
+    DWORD nbytes;
 
     if(b->cur == 0) {
        while(i < BUF_SIZE) {
-           rc = read(b->file, b->buf+i, BUF_SIZE-rc);
-           if(rc == -1) {
-               if(errno != EAGAIN) {
-                   perror("read (in get_byte)");
-                   exit(1);
-               }
-           }
-           else if(rc == 0) {
+           rc = ReadFile(b->file, b->buf+i, BUF_SIZE-rc, &nbytes, NULL);
+           if(!rc) {
+               print_error("read (in get_byte)");
+               exit(1);
+           } else if(nbytes == 0) {
                b->eof = i;
                break;
-           }
-           else
-               i += rc;
+           } else
+               i += nbytes;
            /*cpc_yield;*/
        }
     }

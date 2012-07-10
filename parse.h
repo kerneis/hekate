@@ -26,6 +26,7 @@ THE SOFTWARE.
 
 #include <inttypes.h>
 #include <openssl/sha.h>
+#include <cpc/compatibility.h>
 
 #define BUF_SIZE 512
 #define SET_BASE_SIZE 8
@@ -55,14 +56,7 @@ struct benc {
 
 void free_benc(benc * node);
 
-typedef struct buffer {
-  char * buf;
-  int file;
-  int cur;
-  int eof;
-  SHA_CTX sha1;
-  char hashing;
-} buffer;
+typedef struct buffer buffer;
 
 buffer * open_buffer(const char * pathname);
 void close_buffer(buffer * b);

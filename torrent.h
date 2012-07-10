@@ -30,7 +30,6 @@ struct file {
     uint64_t offset;
     uint64_t length;
     char *path;
-    char *map;
 };
 
 struct torrent {

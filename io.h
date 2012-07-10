@@ -31,10 +31,7 @@ typedef struct cpc_buffer {
 } cpc_buffer;
 
 cps void cpc_io_wait_2(int fd1, int fd2, cpc_condvar *c);
-cps int cpc_buffer_read(int fd, cpc_buffer *b, int len);
-cps int cpc_full_write(int fd, const char *buf, int len);
-cps int cpc_full_writev(int fd, const struct iovec *iov, int iovcnt);
-
+cps int cpc_buffer_read(cpc_handle_t sock, cpc_buffer *b, int len);
 cpc_buffer *cpc_buffer_get(int size);
 void cpc_buffer_destroy(cpc_buffer *b);
 
