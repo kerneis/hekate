@@ -32,7 +32,6 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <openssl/sha.h>
@@ -446,21 +445,10 @@ dht_hash(void *hash_return, int hash_size,
     memcpy(hash_return, sha1, hash_size > 20 ? 20 : hash_size);
 }
 
-static int devrandom = -1;
-
 int
 dht_random_bytes(void *buf, size_t size)
 {
-    int fd, rc, save;
-
-    if(devrandom < 0) {
-        devrandom = open("/dev/urandom", O_RDONLY);
-        if(devrandom < 0)
-            return -1;
-    }
-
-    rc = read(devrandom, buf, size);
-    return rc;
+    return random_bytes(buf, size);
 }
 
 int

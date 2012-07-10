@@ -153,7 +153,7 @@ main(int argc, char **argv)
 {
     hashtable *table;
     CURLcode global;
-    int fd, i;
+    int i;
     unsigned char buf[6];
     sigset_t   signal_mask;
 
@@ -216,17 +216,14 @@ main(int argc, char **argv)
     pagesize = getpagesize();
 
     strcpy(peer_id, "-HK0000-");
-    fd = open("/dev/urandom", O_RDONLY);
-    if(fd < 0) {
-        perror("open(random)");
-        exit(1);
-    }
-    read(fd, buf, 6);
+
+    init_random();
+    random_bytes(buf, 6);
+
     for(i = 0; i < 6; i++)
         snprintf(peer_id + 8 + 2 * i, 21 - (8 + 2 * i), "%02X",
                  (buf[i] & 0xFF));
     peer_id[20] = '\0';
-    close(fd);
 
     global = curl_global_init(CURL_GLOBAL_ALL);
     assert(!global);

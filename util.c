@@ -21,8 +21,10 @@ THE SOFTWARE.
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -32,6 +34,7 @@ THE SOFTWARE.
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "util.h"
 
@@ -212,4 +215,32 @@ find_global_address(int af, void *addr, int *addr_len)
     default:
         return -1;
     }
+}
+
+void
+init_random()
+{
+    srandom((getpid() + 19) * (((int)(size_t)pthread_self()) + 71)
+          * (random() + 42) * time(NULL));
+}
+
+int
+random_bytes(void *buffer, size_t size)
+{
+    static int devrandom = -1;
+    int rc, i;
+
+    if(devrandom < 0) {
+        devrandom = open("/dev/urandom", O_RDONLY);
+        if(devrandom < 0)
+            goto fail;
+    }
+
+    rc = read(devrandom, buffer, size);
+    return rc;
+
+  fail:
+    for(i = 0; i < size; i++)
+        ((unsigned char*)buffer)[i] = (unsigned char)(random());
+    return 0;
 }
