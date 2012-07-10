@@ -23,8 +23,10 @@ THE SOFTWARE.
 #define NO_CPS_PROTO
 #include <cpc/cpc_runtime.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -214,4 +216,24 @@ find_global_address(int af, void *addr, int *addr_len)
     default:
         return -1;
     }
+}
+
+int
+random_bytes(void *buffer, size_t size)
+{
+    static int devrandom = -1;
+    int rc;
+
+    if(devrandom < 0) {
+        devrandom = open("/dev/urandom", O_RDONLY);
+        if(devrandom < 0)
+            goto cannot_open_random_file;
+    }
+
+    rc = read(devrandom, buffer, size);
+    return rc;
+ cannot_open_random_file:
+    for(rc = 0; rc < size; rc ++)
+        *(unsigned char*)(buffer + rc) = (unsigned char) (rand() % 0xFF);
+    return 0;
 }
