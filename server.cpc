@@ -407,7 +407,7 @@ client(int client_fd)
     int rc = 0, error = 0, len = 0;
 
 
-    cpc_io_wait(client_fd, CPC_IO_IN | CPC_IO_OUT);
+    cpc_io_wait(client_fd, CPC_IO_OUT);
     if(getsockopt(client_fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0 ||
             error != 0) {
         debugf(1, "%3d connect failed\n", client_fd);
@@ -457,7 +457,7 @@ connecting(hashtable * table)
     struct sockaddr_in6 sin6;
     struct torrent *torrent = table->table[0]; /* XXX use only the first torrent */
     int client_fd, i=0, flags;
-    int fd_max;
+    int fd_max, rc;
 
     maxpeers = maxunchoked;
     fd_max = maxpeers + 10;
@@ -479,9 +479,12 @@ connecting(hashtable * table)
             torrent = table->table[i];
         }
 
-        client_fd = socket(AF_INET6, SOCK_STREAM, SOCK_NONBLOCK);
+        client_fd = socket(PF_INET6, SOCK_STREAM, 0);
+        if(client_fd<0) {
+            perror("socket");
+            exit(1);
+        }
 
-#if 0
         flags = fcntl(client_fd, F_GETFL);
         if(flags < 0) {
             perror("F_GETFL");
@@ -489,15 +492,12 @@ connecting(hashtable * table)
             continue;
         }
 
-      { int rc;
         rc = fcntl(client_fd, F_SETFL, flags|O_NONBLOCK);
         if(rc < 0) {
             perror("F_SETFL");
             close(client_fd);
             continue;
         }
-      }
-#endif
 
         memset(&sin6, 0, sizeof(sin6));
         sin6.sin6_family = AF_INET6;
