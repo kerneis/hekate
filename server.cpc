@@ -304,10 +304,10 @@ stream_reader(int fd)
         DO_NTOHL(length, b->buf + b->start);
         b->start += 4;
 
-        int save_length = 0;
+        int to_read = 0;
 
         if(length > BUF_LENGTH) {
-            save_length = length;
+            to_read = length;
             length = BUF_LENGTH - 4;
         }
 
@@ -323,19 +323,22 @@ stream_reader(int fd)
 
         type = b->buf[b->start];
 
-        if(save_length > 0) {
+        if(to_read > 0) {
+          debugf(10, "%3d <- type = %d, length = %d\n", fd, type, to_read);
           if(type != 7) {
             debugf(3, "%3d message too long!\n", fd);
             goto fail;
           }
-          debugf(10, "%3d <- type = %d, length = %d\n", fd, type, save_length);
-        } else
+        } else {
           debugf(10, "%3d <- type = %d, length = %d\n", fd, type, length);
+        }
 
         if(type != 5 && type != 20 && type != 7 && length > 20) {
             debugf(1, "%3d unbelievably long message!\n", fd);
             goto fail;
         }
+
+        b->start += length;
 
         switch(type) {
         case 0:
@@ -355,17 +358,21 @@ stream_reader(int fd)
 
         case 7:
             debugf(3, "%3d got some piece!\n", fd);
-            if(save_length > 0) {
+            if(to_read > 0) {
                 assert(length + 4 == BUF_LENGTH);
-                save_length -= length;
+                to_read -= length;
                 /* Read the rest of the piece */
-                while(save_length > 0) {
-                rc = cpc_buffer_read(fd, b, MIN(save_length, BUF_LENGTH));
-                if(rc < 0) {debugf(1, "%3d shit happens!\n", fd); goto fail;}
-                length = save_length;
-                save_length -= rc;
+                while(to_read > 0) {
+                    rc = cpc_buffer_read(fd, b, MIN(to_read, BUF_LENGTH));
+                    if(rc < 0) {
+                        debugf(1, "%3d cpc_buffer_read failed\n", fd);
+                        goto fail;
+                    }
+                    assert(b->start == 0);
+                    assert(b->end == rc);
+                    b->start = MIN(to_read, BUF_LENGTH); /* invalidate buffer */
+                    to_read -= rc;
                 }
-                assert(b->start == 0);
             }
             send_request(fd, rand() % peers[fd].t->num_chunks,
                 rand() % (peers[fd].t->p_length / 0x8000) * peers[fd].t->p_length,  0x8000);
@@ -375,7 +382,6 @@ stream_reader(int fd)
             debugf(1, "%3d unexpected message\n", fd);
             goto fail;
         }
-        b->start += length;
     }
  fail:
     cpc_buffer_destroy(b);
