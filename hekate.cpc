@@ -118,16 +118,6 @@ upload(hashtable *table, char *path)
                 for(i = 0; i<20; i++)
                     snprintf(id + 2 * i, 3, "%.2x", (unsigned char)*(elmt->info_hash + i));
 
-                if(!!validate_torrent(elmt))
-                    debugf(1, "Added: %s %s\n", id, curr_path);
-                else {
-                    debugf(2, "Skipped: %s %s\n", id, curr_path);
-                    close_buffer(buf);
-                    free_torrent(elmt);
-                    free(curr_path);
-                    continue;
-                }
-
                 ht_insert(table, elmt);
 
                 /* insert in trackers list */
