@@ -8,6 +8,8 @@ tens of thousands of simultaneously connected peers.
 Hekate is written in CPC, an experimental concurrent dialect of C. In order to
 build Hekate, you will need to install the CPC compiler first. 
 
+  http://www.pps.univ-paris-diderot.fr/~jch/software/hekate/
+
 Checking out from repository
 ****************************
 
