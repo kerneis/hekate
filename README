@@ -13,7 +13,7 @@ Checking out from repository
 
 If you want to grab the latest development version:
 
-  git clone -b develop --recursive git://kerneis.info/hekate
+  git clone --recursive git://git.wifi.pps.univ-paris-diderot.fr/hekate
 
 Note that you need the --recursive flag because of the dht submodule.
 In case you forget it, you can check out (and update) submodules with:
@@ -22,7 +22,7 @@ In case you forget it, you can check out (and update) submodules with:
 
 There is also a github mirror:
 
-  git clone -b develop --recursive git://github.com/kerneis/hekate
+  git clone --recursive git://github.com/kerneis/hekate
 
 
 Installation
@@ -30,7 +30,7 @@ Installation
 
 To build Hekate, you need to install:
 
-- the CPC compiler [http://www.pps.jussieu.fr/~kerneis/software/cpc],
+- the CPC compiler [http://www.pps.univ-paris-diderot.fr/~kerneis/software/cpc],
 - libcurl,
 - libopenssl,
 - libpthread (which is required by CPC anyway),
@@ -46,10 +46,10 @@ Known bugs and limitations
   should leave.
 - Hekate uses mmap() for every file it serves, and never releases them.  This
   means you need enough virtual memory to hold all your files; this might be an
-  issue if you run Hekate on a 32-bits architecture.
+  issue if you run Hekate on a 32-bit architecture.
 
 Do not hesitate to report other bugs to the hekate-users mailing list:
 
   http://lists.sourceforge.net/lists/listinfo/hekate-users
 
-Gabriel Kerneis <kerneis@pps.jussieu.fr>
+Gabriel Kerneis <gabriel@kerneis.info>
