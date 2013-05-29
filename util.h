@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <arpa/inet.h>
+
 extern int debug_level;
 extern size_t pagesize;
 
@@ -32,6 +34,7 @@ extern size_t pagesize;
 #define DO_HTONS(_d, _s) do { *(unsigned short*)(_d) = htons(_s); } while(0)
 #define DO_HTONL(_d, _s) do { *(unsigned*)(_d) = htonl(_s); } while(0)
 #else
+#include <string.h>
 #define DO_NTOHS(_d, _s) \
     do { unsigned short _dd; \
          memcpy(&(_dd), (_s), sizeof(unsigned short)); \
