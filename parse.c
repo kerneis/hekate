@@ -115,7 +115,7 @@ stop_hashing(buffer *b, unsigned char *result)
 }
 
 /* shall we return an int to allow error codes? */
-/*cps*/ static char
+static char
 get_byte(buffer *b)
 {
     int rc=0, i = 0;
@@ -150,7 +150,7 @@ get_byte(buffer *b)
 
 #define eof_buffer( b ) (b->cur == b->eof)
 
-/*cps*/ static char *
+static char *
 get_string(buffer *b, int64_t n)
 {
     int64_t i;
@@ -167,7 +167,7 @@ get_string(buffer *b, int64_t n)
     return s;
 }
 
-/*cps*/ static int64_t
+static int64_t
 parse_int(buffer *b, char c, char end)
 {
     int64_t r = 0;
@@ -188,7 +188,7 @@ parse_int(buffer *b, char c, char end)
     return (negative ? -r : r);
 }
 
-/*cps*/ static void
+static void
 parse_list (buffer *b, benc *r)
 {
     benc *tmp;
@@ -198,7 +198,7 @@ parse_list (buffer *b, benc *r)
     r->size = r->set.used;
 }
 
-/*cps*/ static void
+static void
 parse_dict (buffer *b, benc *r)
 {
     benc *key, *value;
@@ -222,7 +222,7 @@ parse_dict (buffer *b, benc *r)
     r->size = r->set.used;
 }
 
-/*cps*/ benc *
+benc *
 parsing(buffer *b)
 {
     int64_t n;
