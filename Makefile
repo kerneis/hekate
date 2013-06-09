@@ -1,4 +1,4 @@
-CPC=cpc.asm.exe
+CPC=cpc
 
 CDEBUGFLAGS=-O2 -Wall -Wno-uninitialized -g
 
@@ -16,12 +16,9 @@ hekate: util.o io.o list.o hashtable.o parse.o torrent.o tracker.o server.o heka
 all: hekate
 
 clean:
-	rm -f *.o *~ *.cpi dht/dht.o
-	for x in *.cpc; do rm -f $${x%.cpc}.c; done;
+	rm -f *.o *~ dht/dht.o
 	rm -f hekate
 
-.cpc.cpi:
-	$(CC) -E -x c $(CFLAGS) $(CLIBS) -o $@ $<
+.cpc.o:
+	$(CPC) $(CPCOPTS) $(CFLAGS) $(CLIBS) -c -o $@ $<
 
-.cpi.c:
-	$(CPC) $(CPCOPTS) $< --out $@
