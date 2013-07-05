@@ -25,7 +25,7 @@ clean:
 	$(CPC) $(CPCOPTS) $(CFLAGS) $(CLIBS) -c -o $@ $<
 
 .cpc.dot:
-	$(CPC) --docpsInference --save-temps $(CPCOPTS) $(CFLAGS) $(CLIBS) -c $<
+	$(CPC) --docpsInference --save-temps $(CPCOPTS) $(CFLAGS) $(CLIBS) -c $< || true
 
 .dot.pdf:
 	dot -Tpdf -o $@ $<
