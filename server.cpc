@@ -443,6 +443,8 @@ unchoke_peer(int fd)
     return 1;
 }
 
+static void free_chunks(int fd);
+
 static cps int
 choke_peer(int fd)
 {
